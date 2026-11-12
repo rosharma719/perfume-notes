@@ -47,12 +47,12 @@
 
   /* ---------- views + url ---------- */
   const GROUPS = [
-    { id: "explore", label: "Explore", views: [["explore", "Explore"]] },
+    { id: "explore", label: "Explore", ctx: "Tap notes to combine them, then open Fragrances", views: [["explore", "Explore"]] },
     { id: "combos", label: "Combos", views: [["pairs", "Pairs"], ["trios", "Trios"], ["swap", "Stand-ins"], ["avoid", "Avoided"]] },
     { id: "notes", label: "Notes", views: [["trends", "Trends"], ["formulas", "Formula size"], ["audience", "Audience"]] },
     { id: "styles", label: "Styles", views: [["families", "Families"], ["regions", "Regions"], ["houses", "Houses"]] },
-    { id: "market", label: "Market", views: [["market", "By year"]] },
-    { id: "about", label: "About", views: [["about", "About"]] },
+    { id: "market", label: "Market", ctx: "Releases, audience mix and formula size by year", views: [["market", "By year"]] },
+    { id: "about", label: "About", ctx: "Definitions and data caveats", views: [["about", "About"]] },
   ];
   const VIEWS = GROUPS.flatMap((g) => g.views.map((v) => v[0]));
   const groupOf = (v) => GROUPS.find((g) => g.views.some((x) => x[0] === v));
@@ -75,8 +75,7 @@
     const g = groupOf(v); lastIn[g.id] = v;
     panes.forEach((p) => (p.hidden = p.dataset.view !== v));
     document.querySelectorAll(".pt").forEach((b) => { const on = b.dataset.group === g.id; b.classList.toggle("on", on); b.setAttribute("aria-selected", on); });
-    $("sbar").hidden = g.views.length < 2;
-    $("stabs").innerHTML = g.views.length < 2 ? "" : g.views.map(([id, label]) => `<button class="st${id === v ? " on" : ""}" role="tab" data-view="${id}">${label}</button>`).join("");
+    $("stabs").innerHTML = g.views.length < 2 ? `<span class="sctx">${g.ctx}</span>` : g.views.map(([id, label]) => `<button class="st${id === v ? " on" : ""}" role="tab" data-view="${id}">${label}</button>`).join("");
     document.body.dataset.view = v;
     if (v !== "explore") $("panel").classList.remove("open");
     writeHash(); syncTabH();
