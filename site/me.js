@@ -28,7 +28,7 @@
   const save = () => {
     try { localStorage.setItem(KEY, JSON.stringify(S)); saveOK = true; if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); }
     catch (e) { saveOK = false; }
-    status();
+    status(); if (A.ribbon) A.ribbon();
   };
 
   // match a saved entry to the current catalog: exact, then normalised, then same house + similar words
@@ -75,9 +75,17 @@
     };
     ownK = res("own"); disK = res("dis");
     ownSet = new Set(ownK); disSet = new Set(disK); dirty = true;
-    if (healed || needSave) { needSave = false; save(); } else status();
+    if (healed || needSave) { needSave = false; save(); } else { status(); if (A.ribbon) A.ribbon(); }
   }
   sync();
+  // palette for the top ribbon: your collection, else the notes you love
+  A.palette = () => {
+    const w = D.families.map(() => 0);
+    if (ownK.length) { ownK.forEach((k) => A.famMix(k).forEach((v, i) => (w[i] += v))); return { w, cap: "Your collection" }; }
+    const love = idxSet(S.love, ix);
+    if (love.size) { love.forEach((i) => (w[FO[i]] += A.wNote[i])); return { w, cap: "Notes you love" }; }
+    return null;
+  };
   const idxSet = (names, map) => new Set(names.map((n) => map.get(n)).filter((x) => x !== undefined));
 
   A.me = {

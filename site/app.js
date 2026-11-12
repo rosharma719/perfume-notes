@@ -70,7 +70,7 @@
     if (sel.length && tab === "frags") p.push("t=frags");
     try { history.replaceState(null, "", location.pathname + location.search + (p.length ? "#" + p.join("&") : "")); } catch (e) {}
   }
-  function syncTabH() { document.documentElement.style.setProperty("--tabh", tabbar.offsetHeight + "px"); }
+  function syncTabH() { document.documentElement.style.setProperty("--tabh", tabbar.offsetHeight + $("ribbon").offsetHeight + "px"); }
   window.addEventListener("resize", syncTabH);
   function show(v, scroll) {
     if (!VIEWS.includes(v)) v = "explore";
@@ -85,7 +85,8 @@
     if (v !== "explore") $("panel").classList.remove("open");
     writeHash(); syncTabH();
     if (APP.hooks[v]) APP.hooks[v]();
-    if (scroll) { const top = tabbar.offsetTop; if (window.scrollY > top) window.scrollTo(0, top); }
+    updateRibbon();
+    if (scroll) { const top = tabbar.offsetTop - $("ribbon").offsetHeight; if (window.scrollY > top) window.scrollTo(0, top); }
   }
   const vis = () => document.body.classList.toggle("has-sel", sel.length > 0 || lookupOpen);
 
@@ -203,7 +204,7 @@
     $("clear").hidden = !sel.length;
     board.classList.toggle("rel", sel.length > 0);
     tiles.forEach((t) => { t.classList.remove("sel", "cold"); t.style.removeProperty("--s"); t.querySelector(".lf").textContent = ""; });
-    if (!sel.length) { ctx = null; $("panel").classList.remove("open"); renderPanel(true); return; }
+    if (!sel.length) { ctx = null; $("panel").classList.remove("open"); renderPanel(true); updateRibbon(); return; }
 
     const match = [];
     for (let k = 0; k < N; k++) { let ok = 1; for (const i of sel) if (!has[i][k]) { ok = 0; break; } if (ok) match.push(k); }
@@ -229,8 +230,9 @@
       if (!M || d.c === 0) t.classList.add("cold");
       if (s >= 0.35 && d.c >= 5) t.querySelector(".lf").textContent = times(d.lift);
     });
-    ctx = { M, cand, sizeSum, match };
+    ctx = { M, cand, sizeSum, match, cnt };
     renderPanel(true);
+    updateRibbon();
   }
 
   function renderPanel(top) {
@@ -331,6 +333,29 @@
     return `<span class="mix${big ? " big" : ""}" title="${esc(segs.slice(0, 4).map(([v, i]) => D.families[i] + " " + Math.round(v * 100) + "%").join(", "))}">${segs.map(([v, i]) => `<i style="width:${v * 100}%;background:${FP[i][1]}"></i>`).join("")}</span>`;
   }
   const mixLabel = (k) => mixSegs(famMix(k)).slice(0, 2).map(([, i]) => D.families[i]).join(" · ");
+
+  /* ---------- live palette ribbon (top of page) ---------- */
+  const ribbonEl = $("ribbon");
+  ribbonEl.innerHTML = D.families.map((f, i) => `<i style="background:${FP[i][1]};flex-grow:0" title="${esc(f)}"></i>`).join("");
+  const ribbonSegs = [...ribbonEl.children];
+  let defaultW = null;
+  function setRibbon(w, cap) {
+    const tot = w.reduce((a, b) => a + b, 0) || 1;
+    ribbonSegs.forEach((el, i) => (el.style.flexGrow = ((w[i] / tot) * 100).toFixed(2)));
+    $("ribbon-cap").textContent = cap || "";
+  }
+  function updateRibbon() {
+    if (view === "explore" && ctx && ctx.M && ctx.cnt) {
+      const w = D.families.map(() => 0); const skip = new Set(sel);
+      ctx.cnt.forEach((c, i) => { if (c && !skip.has(i)) w[FO[i]] += c * wNote[i]; });
+      setRibbon(w, "What goes with " + (sel.length > 2 ? sel.length + " notes" : sel.map((i) => notes[i]).join(" + ")));
+      return;
+    }
+    const mine = APP.palette && APP.palette();
+    if (groupOf(view).id === "me" && mine) { setRibbon(mine.w, mine.cap); return; }
+    if (!defaultW) { defaultW = D.families.map(() => 0); notes.forEach((n, i) => (defaultW[FO[i]] += F[i] * wNote[i])); }
+    setRibbon(defaultW, "All perfumes");
+  }
 
   /* ---------- fragrance cards (Explore, Shop, Collection) ---------- */
   const priceOf = new Map(); D.priced.forEach((e) => { if (e.k >= 0) priceOf.set(e.k, e); });
@@ -534,13 +559,14 @@
     { key: "lean", label: "Men’s ↔ women’s", val: (r) => r.lean, html: (r) => `<span class="sp"><span class="l"><i style="width:${(r.share[0] / gMax) * 100}%"></i></span><span class="r"><i style="width:${(r.share[1] / gMax) * 100}%"></i></span></span>` }] });
 
   Object.assign(APP, { D, N, P, notes, ix, FO, FP, F, has, fs, chip, esc, fmt, pct, times, GL, mobile, $, show, setSel, mkTable,
-    fragItem, simHTML, famMix, domFam, famVars, mixBar, mixLabel, FPAL: FP, ratingScore, bestPpm, priceOf, rankOf, factsHTML, view: () => view,
+    fragItem, simHTML, ribbon: updateRibbon, wNote, famMix, domFam, famVars, mixBar, mixLabel, FPAL: FP, ratingScore, bestPpm, priceOf, rankOf, factsHTML, view: () => view,
     refresh: () => { if ($("fraglist") && view === "explore") renderFrags(); if (APP.hooks[view]) APP.hooks[view](); } });
 
   /* ---------- boot ---------- */
   const hp = new URLSearchParams(location.hash.slice(1));
   tab = hp.get("t") === "frags" ? "frags" : "pairs";
   APP.pendingMe = hp.get("me");
+  setTimeout(updateRibbon, 80);   // after first paint, so the ribbon fills in
   APP.ready = true;
   const names0 = (hp.get("n") || "").split(",").map((n) => ix.get(n)).filter((i) => i !== undefined);
   show(hp.get("v") || "explore", false);

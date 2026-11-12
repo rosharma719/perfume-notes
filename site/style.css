@@ -30,7 +30,7 @@ b{font-weight:600;color:var(--ink)}
 .top{max-width:80rem;margin:0 auto;padding:1rem 1.75rem .7rem;display:flex;justify-content:space-between;align-items:baseline;gap:1rem}
 .top h1{margin:0;font-size:1.15rem;font-weight:500;color:var(--ink);letter-spacing:-.01em}
 .stat{margin:0;font-size:.82rem;color:var(--mute)}
-.tabbar{position:sticky;top:0;z-index:25;background:#fff;border-bottom:1px solid var(--line)}
+.tabbar{position:sticky;top:6px;z-index:25;background:#fff;border-bottom:1px solid var(--line)}
 .tabbar-in{position:relative;max-width:80rem;margin:0 auto;padding:0 1.75rem;display:flex;align-items:stretch;gap:1.5rem;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .tabbar-in::-webkit-scrollbar{display:none}
 .vt{flex:none;padding:.95rem 0;white-space:nowrap;font-size:.95rem;font-weight:500;color:var(--mute);border-bottom:3px solid transparent;margin-bottom:-1px}
@@ -263,6 +263,19 @@ body[data-group="about"]{--accent:#4b5563;--accent-soft:#cbd0d6;--accent-wash:#e
 .pal-key{display:flex;flex-wrap:wrap;gap:.3rem 1.1rem;margin-top:.5rem;font-size:.8rem;color:var(--mute)}
 .pal-key i{display:inline-block;width:.7rem;height:.7rem;border-radius:2px;margin-right:.35rem;vertical-align:-.05rem}
 
+/* ---------- brand: wheel mark + live palette ribbon ---------- */
+.ribbon{position:sticky;top:0;z-index:30;display:flex;height:6px;background:var(--surface)}
+.ribbon i{display:block;flex:0 1 0;min-width:0;transition:flex-grow .8s cubic-bezier(.3,.7,.2,1)}
+.top{align-items:center;padding:.9rem 1.75rem .8rem}
+.brand{display:flex;align-items:center;gap:.65rem;text-decoration:none;color:var(--ink)}
+.mark{width:2.1rem;height:2.1rem;flex:none;animation:turn 1.5s cubic-bezier(.2,.7,.2,1) both;transition:transform .6s cubic-bezier(.3,.7,.2,1)}
+.brand:hover .mark{transform:rotate(60deg)}
+.word{font-size:1.3rem;font-weight:600;letter-spacing:.015em;line-height:1}
+.stat{text-align:right;line-height:1.3}
+.cap{display:block;font-size:.74rem;color:var(--faint)}
+@keyframes turn{from{transform:rotate(-150deg) scale(.6);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.mark{animation:none}.ribbon i{transition:none}}
+
 /* ---------- tablet / phone ---------- */
 @media (max-width:980px){
   .inner,.top{padding-left:1.1rem;padding-right:1.1rem}
@@ -309,4 +322,5 @@ body[data-group="about"]{--accent:#4b5563;--accent-soft:#cbd0d6;--accent-wash:#e
   .sp{min-width:4.5rem}
   .stk{width:4.5rem}
   .stat{display:none}
+  .top{padding:.8rem 1.1rem .7rem}
 }
