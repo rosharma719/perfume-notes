@@ -52,4 +52,7 @@ Deploy on Vercel with Root Directory `site`, Framework "Other", no build command
 - **Insights**: Pairs, Trios, Stand-ins, Avoided, Trends, Formula size, Audience (from the original 26k sample).
 - **Styles**: Families, Regions, Houses, By year. **About**: definitions and sources.
 
+Each section has its own accent colour, and every perfume is drawn with a profile bar: the mix of its note families in the
+family colours (rarer notes weigh more, so Musk doesn't colour everything), an edge in its dominant family, and a short caption.
+
 The URL hash keeps the view and selection, so views are shareable.

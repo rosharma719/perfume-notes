@@ -81,6 +81,7 @@
     const bar = $("vtabs"), cur = bar.querySelector(".vt.on");
     if (cur) bar.scrollTo({ left: Math.max(0, cur.offsetLeft - (bar.clientWidth - cur.offsetWidth) / 2), behavior: "smooth" });
     document.body.dataset.view = v;
+    document.body.dataset.group = groupOf(v).id;
     if (v !== "explore") $("panel").classList.remove("open");
     writeHash(); syncTabH();
     if (APP.hooks[v]) APP.hooks[v]();
@@ -310,6 +311,27 @@
     return { out, near };
   }
 
+  /* ---------- colour profile: a perfume's mix of note families ---------- */
+  // rarer notes count more, so Musk (in half of all perfumes) doesn't paint everything the same colour
+  const wNote = notes.map((n, i) => (/(Notes|Accord)$/.test(n) ? 0 : Math.pow(Math.max(F[i], 1) / N, -0.25)));
+  const mixCache = new Map();
+  function famMix(k) {
+    let m = mixCache.get(k);
+    if (m) return m;
+    const c = new Array(D.families.length).fill(0); let tot = 0;
+    P[k][4].forEach((i) => { c[FO[i]] += wNote[i]; tot += wNote[i]; });
+    m = c.map((x) => (tot ? x / tot : 0)); mixCache.set(k, m); return m;
+  }
+  const domFam = (k) => { const m = famMix(k); let b = 0; m.forEach((v, i) => { if (v > m[b]) b = i; }); return b; };
+  const famVars = (fi) => `--p:${FP[fi][0]};--m:${FP[fi][1]};--d:${FP[fi][2]}`;
+  const mixSegs = (m) => m.map((v, i) => [v, i]).filter((x) => x[0] >= 0.05).sort((x, y) => y[0] - x[0]);
+  function mixBar(k, big) {
+    if (k < 0) return "–";
+    const segs = mixSegs(famMix(k));
+    return `<span class="mix${big ? " big" : ""}" title="${esc(segs.slice(0, 4).map(([v, i]) => D.families[i] + " " + Math.round(v * 100) + "%").join(", "))}">${segs.map(([v, i]) => `<i style="width:${v * 100}%;background:${FP[i][1]}"></i>`).join("")}</span>`;
+  }
+  const mixLabel = (k) => mixSegs(famMix(k)).slice(0, 2).map(([, i]) => D.families[i]).join(" · ");
+
   /* ---------- fragrance cards (Explore, Shop, Collection) ---------- */
   const priceOf = new Map(); D.priced.forEach((e) => { if (e.k >= 0) priceOf.set(e.k, e); });
   const rankOf = new Map(); D.demand.europe.forEach((e) => { if (e.k >= 0) rankOf.set(e.k, e.rank); });
@@ -338,9 +360,9 @@
       body = `<div class="fn">${mine.map(pill).join("")}${rest.slice(0, 9).map(pill).join("")}${rest.length > 9 ? `<span class="n more">+${rest.length - 9}</span>` : ""}</div>`;
     }
     const own = APP.me.isOwn(k), dis = APP.me.isDis(k), missing = o.missing || [];
-    return `<li class="frag" data-k="${k}"><div class="ft"><b>${esc(name)}</b> <span>${esc(brand)}</span></div>` +
+    return `<li class="frag" data-k="${k}" style="${famVars(domFam(k))}"><div class="ft"><b>${esc(name)}</b> <span>${esc(brand)}</span></div>` +
       `<div class="fm">${year || "n/a"}${g >= 0 ? " · " + GL[g] : ""}${fi >= 0 ? " · " + esc(D.fam_names[fi]) : ""}${oi >= 0 ? " · " + esc(D.org_names[oi]) : ""} · ${ids.length} ${ids.length === 1 ? "note" : "notes"}${missing.length ? ` · <u>missing ${esc(missing.join(", "))}</u>` : ""}</div>` +
-      factsHTML(k) + (o.reasons ? `<div class="why-row">${o.reasons}</div>` : "") + body +
+      `<div class="mixrow">${mixBar(k)}<span class="mixlab">${esc(mixLabel(k))}</span></div>` + factsHTML(k) + (o.reasons ? `<div class="why-row">${o.reasons}</div>` : "") + body +
       `<div class="facts"><button class="linkish${own ? " on" : ""}" data-own="${k}">${own ? "Owned" : "Own"}</button>` +
       `<button class="linkish${dis ? " on" : ""}" data-dis="${k}">${dis ? "Disliked" : "Not for me"}</button>` +
       `<button class="linkish" data-sim="${k}">Similar</button>` +
@@ -512,7 +534,7 @@
     { key: "lean", label: "Men’s ↔ women’s", val: (r) => r.lean, html: (r) => `<span class="sp"><span class="l"><i style="width:${(r.share[0] / gMax) * 100}%"></i></span><span class="r"><i style="width:${(r.share[1] / gMax) * 100}%"></i></span></span>` }] });
 
   Object.assign(APP, { D, N, P, notes, ix, FO, FP, F, has, fs, chip, esc, fmt, pct, times, GL, mobile, $, show, setSel, mkTable,
-    fragItem, simHTML, ratingScore, bestPpm, priceOf, rankOf, factsHTML, view: () => view,
+    fragItem, simHTML, famMix, domFam, famVars, mixBar, mixLabel, FPAL: FP, ratingScore, bestPpm, priceOf, rankOf, factsHTML, view: () => view,
     refresh: () => { if ($("fraglist") && view === "explore") renderFrags(); if (APP.hooks[view]) APP.hooks[view](); } });
 
   /* ---------- boot ---------- */

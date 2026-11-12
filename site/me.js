@@ -162,7 +162,12 @@
       if (s >= 0.5) dup.push([ownK[a], ownK[b], s]);
     }
     dup.sort((p, q) => q[2] - p[2]);
-    el.innerHTML = `<div class="an-grid">` +
+    const pal = new Array(D.families.length).fill(0);
+    ownK.forEach((k) => A.famMix(k).forEach((v, i) => (pal[i] += v / ownK.length)));
+    const palTop = pal.map((v, i) => [v, i]).filter((x) => x[0] >= 0.05).sort((x, y) => y[0] - x[0]);
+    const palette = `<div class="palette"><h3>Your palette</h3><span class="mix big">${palTop.map(([v, i]) => `<i style="width:${v * 100}%;background:${FP[i][1]}"></i>`).join("")}</span>` +
+      `<div class="pal-key">${palTop.slice(0, 5).map(([v, i]) => `<span><i style="background:${FP[i][1]}"></i>${esc(D.families[i])} ${Math.round(v * 100)}%</span>`).join("")}</div></div>`;
+    el.innerHTML = palette + `<div class="an-grid">` +
       `<div><h3>Family mix</h3>${FAMS.map((f, i) => `<div class="fbar${fam[i] ? "" : " zero"}"><span>${esc(f)}</span><i style="width:${(fam[i] / maxF) * 100}%"></i><b>${fam[i] || "none"}</b></div>`).join("")}<p class="hint">Only perfumes with a known family are counted.</p></div>` +
       `<div><h3>What you lean on</h3><div class="chiprow">${top.length ? top.map(([i, c]) => `${chip(i)}`).join("") : "<span class=hint>Add a few more perfumes.</span>"}</div>` +
       (missing.length ? `<h3>Loved but not in your collection</h3><div class="chiprow">${missing.map((i) => chip(i)).join("")}</div>` : "") +
@@ -333,6 +338,7 @@
     { key: "m10", label: "10 ml", num: 1, dir: 1, val: (r) => (r.m[1] == null ? 1e9 : r.m[1]), html: (r) => eur(r.m[1]) },
     { key: "m30", label: "30 ml", num: 1, dir: 1, val: (r) => (r.m[2] == null ? 1e9 : r.m[2]), html: (r) => eur(r.m[2]) },
     { key: "rt", label: "Rating", num: 1, m: 1, val: (r) => ratingOf(r.k), html: (r) => (ratingOf(r.k) ? ratingOf(r.k).toFixed(1) : "–") },
+    { key: "mix", label: "Profile", m: 1, html: (r) => A.mixBar(r.k) },
     { key: "notes", label: "Notes", m: 1, html: (r) => noteChips(r.k) },
     { key: "go", label: "", html: (r) => r.slug ? `<a class="act" target="_blank" rel="noopener" href="https://10ml.com/perfumes/${esc(r.slug)}">10ml.com</a>` : "" }] });
 
@@ -343,7 +349,8 @@
     { key: "d", label: "Dupe", dir: 1, val: (r) => r.d.name, html: (r) => `<b>${esc(r.d.name)}</b> <span class="sub">${esc(r.d.house)}</span>` },
     { key: "dp", label: "€/ml", num: 1, val: (r) => r.d.ppm, html: (r) => eur(r.d.ppm) },
     { key: "save", label: "Saving", num: 1, val: (r) => r.save, html: (r) => Math.round(r.save) + "%" },
-    { key: "sim", label: "Same notes", num: 1, m: 1, val: (r) => (r.sim == null ? -1 : r.sim), html: (r) => sim(r.sim) }] });
+    { key: "sim", label: "Same notes", num: 1, m: 1, val: (r) => (r.sim == null ? -1 : r.sim), html: (r) => sim(r.sim) },
+    { key: "mix", label: "Original / dupe profile", m: 1, html: (r) => `<span class="mix2">${A.mixBar(r.o.k)}${A.mixBar(r.d.k)}</span>` }] });
 
   const dRow = (r) => ({ ...r, ppm: r.k >= 0 && priceOf.has(r.k) ? bestPpm(priceOf.get(r.k)) : null });
   const rk = (id, list, extra) => mkTable(id, { sort: "rank", dir: 1, rows: list.map(dRow), cols: [
@@ -351,6 +358,7 @@
     { key: "p", label: "Perfume", dir: 1, val: (r) => r.perfume, html: (r) => `<b>${esc(r.perfume)}</b> <span class="sub">${esc(r.house)}</span>` },
     { key: "ppm", label: "From €/ml", num: 1, m: 1, val: (r) => (r.ppm == null ? 1e9 : r.ppm), dir: 1, html: (r) => eur(r.ppm) },
     { key: "rt", label: "Rating", num: 1, m: 1, val: (r) => ratingOf(r.k), html: (r) => (ratingOf(r.k) ? ratingOf(r.k).toFixed(1) : "–") },
+    { key: "mix", label: "Profile", m: 1, html: (r) => A.mixBar(r.k) },
     { key: "notes", label: "Notes", m: 1, html: (r) => noteChips(r.k) }] });
   rk("t-eu", D.demand.europe);
   rk("t-clm", D.demand.climbers);
