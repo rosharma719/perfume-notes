@@ -577,6 +577,24 @@
     fragItem, simHTML, ribbon: updateRibbon, wNote, famMix, domFam, famVars, mixBar, mixLabel, FPAL: FP, ratingScore, bestPpm, priceOf, rankOf, factsHTML, view: () => view,
     refresh: () => { if ($("fraglist") && view === "explore") renderFrags(); if (APP.hooks[view]) APP.hooks[view](); } });
 
+  /* ---------- no pull-to-refresh ---------- */
+  // iOS Safari reloads the page when you drag down at the very top. Cancel that gesture there, but let any
+  // scrollable element (the open bottom sheet) scroll back up, and leave horizontal swipes alone.
+  if ("ontouchstart" in window) {
+    let x0 = 0, y0 = 0;
+    const canScrollUp = (el) => {
+      for (; el && el !== document.documentElement; el = el.parentElement) {
+        if (/(auto|scroll)/.test(getComputedStyle(el).overflowY) && el.scrollHeight > el.clientHeight && el.scrollTop > 0) return true;
+      }
+      return false;
+    };
+    document.addEventListener("touchstart", (e) => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+    document.addEventListener("touchmove", (e) => {
+      const dy = e.touches[0].clientY - y0, dx = e.touches[0].clientX - x0;
+      if (dy > 0 && Math.abs(dy) > Math.abs(dx) && window.scrollY <= 0 && !canScrollUp(e.target)) e.preventDefault();
+    }, { passive: false });
+  }
+
   /* ---------- boot ---------- */
   const hp = new URLSearchParams(location.hash.slice(1));
   tab = hp.get("t") === "frags" ? "frags" : "pairs";

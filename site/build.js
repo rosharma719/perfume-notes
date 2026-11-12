@@ -1,1 +1,1 @@
-window.BUILD="2026-11-12 · sticky header, grouped tabs";
+window.BUILD="2026-11-12 · no pull-to-refresh";
