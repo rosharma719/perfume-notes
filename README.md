@@ -43,18 +43,14 @@ drop the `parfumo` source in `catalog.py` if that matters for how you use this.
 `site/` is a static page, no build step: open `site/index.html` or serve the folder (Archivo is self-hosted in `site/fonts`).
 Deploy on Vercel with Root Directory `site`, Framework "Other", no build command.
 
-- **Explore**: select notes; related ones take their family colour, unrelated go gray. Pairings + Fragrances panel.
-- **For me**: *Taste* (love/avoid notes and families, audience), *Collection* (what you own, gaps and overlaps), *Shop*
-  (ranked suggestions that favour loved notes and gaps, avoid near-copies, and show rating, price, season). Saved in the
-  browser (localStorage, persistent storage requested). Saved perfumes are re-matched when the catalog is rebuilt, and any
-  that can't be matched are kept and listed. Back up with a file or a link that carries the profile to another device.
-- **Insights**: Pairs, Trios, Stand-ins, Avoided, Trends, Formula size, Audience (from the original 26k sample).
-- **Styles**: Families, Regions, Houses, By year. **About**: definitions and sources.
+Four tabs, ordered by what people want to do (the URL hash keeps view + selection; old links still work):
+- **Find** (home): "I love a perfume" or "I like certain scents" -> similar perfumes / perfumes with those scents, with plain reasons
+  (shared notes, what differs, accords like fresh/spicy/woody). Opens on a live example so the output is visible immediately.
+  Similarity = rarity-weighted note overlap blended with accord agreement, nudged toward well-reviewed perfumes.
+- **My shelf**: *Taste* (love/avoid notes and families), *Collection* (what you own: gaps and overlaps), *Picks* (ranked suggestions).
+  Saved in the browser; re-matched when the catalog changes; back up with a file or a link.
+- **Note map**: the colour-coded note grid. Select notes and related ones light up; open Fragrances for real perfumes.
+- **Insights**: Combinations (go together, trios, swaps, never together), Notes (trends, simple vs complex, men's vs women's),
+  Styles (families, countries, houses, by year).
 
-Each section has its own accent colour, and every perfume is drawn with a profile bar: the mix of its note families in the
-family colours (rarer notes weigh more, so Musk doesn't colour everything), an edge in its dominant family, and a short caption.
-
-Navigation: a sticky header (ribbon, wordmark, tabs) with five tabs (Explore, For me, Combos, Notes, Styles) plus About;
-related views within a tab are a pill switcher at the top of the page. Old `#v=...` links still work.
-
-The URL hash keeps the view and selection, so views are shareable.
+Each perfume is drawn with a profile bar (mix of note families), plain-word accords, rating, and its top/heart/base notes.

@@ -205,8 +205,10 @@ def main():
     cat_rows, priced, dupes, demand, cstats, extras, bmerged = catalog.build(rows, notes, normalise_note, FAMILY_OF, cpaths)
     notes_out = notes + [n for n, _ in extras]
     family_out = [fams.index(FAMILY_OF[n]) for n in notes] + [fams.index(f) for _, f in extras]
+    acc_vocab = [a for a, _ in Counter(a for c in cat_rows for a in c["acc"]).most_common()]
+    acc_ix = {a: i for i, a in enumerate(acc_vocab)}
     perfumes = [[c["name"], c["brand"], c["year"], c["gender"], c["ids"], fidx.get(c["family"], -1), oidx.get(c["origin"], -1),
-                 int(round(c["rating"] * 10)) if c["rating"] else 0, c["reviews"]] for c in cat_rows]
+                 int(round(c["rating"] * 10)) if c["rating"] else 0, c["reviews"], [acc_ix[a] for a in c["acc"]]] for c in cat_rows]
     pyr = {i: c["pyr"] for i, c in enumerate(cat_rows) if c["pyr"]}
     meta = {i: c["meta"] + [c["rank"]] for i, c in enumerate(cat_rows) if c["meta"]}
     print("catalog:", cstats)
@@ -216,7 +218,7 @@ def main():
     data = {
         "n": N, "notes": notes_out, "n_stat_notes": len(notes), "freq": f, "families": fams, "family_of": family_out,
         "perfumes": perfumes, "pyr": pyr, "meta": meta, "priced": priced, "dupes": dupes, "demand": demand,
-        "sources": catalog.SOURCE_INFO, "cstats": cstats,
+        "sources": catalog.SOURCE_INFO, "cstats": cstats, "accords": acc_vocab,
         "fam_names": [nice(x) for x in fam_names], "org_names": [nice(x) if x.isupper() else x for x in org_names],
         "olf": families, "olf_sub": subfamilies, "regions": regions, "market": market,
         "surprising": surprising, "avoid": avoid, "trios": trios, "trios_common": trios_common,

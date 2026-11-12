@@ -50,31 +50,42 @@
 
   /* ---------- views + url ---------- */
   const GROUPS = [
-    { id: "explore", label: "Explore", views: [["explore", "Explore"]] },
-    { id: "me", label: "For me", views: [["taste", "Taste"], ["collection", "Collection"], ["shop", "Shop"]] },
-    { id: "combos", label: "Combos", views: [["pairs", "Pairs"], ["trios", "Trios"], ["swap", "Stand-ins"], ["avoid", "Avoided"]] },
-    { id: "notes", label: "Notes", views: [["trends", "Trends"], ["formulas", "Formula size"], ["audience", "Audience"]] },
-    { id: "styles", label: "Styles", views: [["families", "Families"], ["regions", "Regions"], ["houses", "Houses"], ["market", "Market"]] },
+    { id: "find", label: "Find", views: [["find", "Find"]] },
+    { id: "me", label: "My shelf", views: [["taste", "Taste"], ["collection", "Collection"], ["shop", "Picks"]] },
+    { id: "explore", label: "Note map", views: [["explore", "Note map"]] },
+    { id: "combos", label: "Combinations", views: [["pairs", "Go together"], ["trios", "Trios"], ["swap", "Swaps"], ["avoid", "Never together"]] },
+    { id: "notes", label: "Notes", views: [["trends", "Trends"], ["formulas", "Simple vs complex"], ["audience", "Men’s vs women’s"]] },
+    { id: "styles", label: "Styles", views: [["families", "Families"], ["regions", "Countries"], ["houses", "Houses"], ["market", "By year"]] },
     { id: "about", label: "About", views: [["about", "About"]] },
+  ];
+  // top-level tabs follow what people want to do; related groups share a tab
+  const TABS = [
+    { id: "find", label: "Find", groups: ["find"] },
+    { id: "me", label: "My shelf", groups: ["me"] },
+    { id: "explore", label: "Note map", groups: ["explore"] },
+    { id: "insights", label: "Insights", groups: ["combos", "notes", "styles"] },
   ];
   const VIEWS = GROUPS.flatMap((g) => g.views.map((v) => v[0]));
   const groupOf = (v) => GROUPS.find((g) => g.views.some((x) => x[0] === v));
   const lastIn = {};
-  let view = "explore";
+  const tabOf = (v) => TABS.find((t) => t.groups.includes(groupOf(v).id));
+  let view = "find";
   const tabbar = $("tabbar"), panes = [...document.querySelectorAll(".pane")];
   const chrome = $("chrome");
-  $("vtabs").innerHTML = GROUPS.filter((g) => g.id !== "about").map((g) => `<button class="vt" role="tab" data-group="${g.id}">${g.label}</button>`).join("");
-  // related views share one tab: a pill switcher at the top of each page
-  GROUPS.forEach((g) => {
-    if (g.views.length < 2) return;
-    g.views.forEach(([id]) => {
+  $("vtabs").innerHTML = TABS.map((t) => `<button class="vt" role="tab" data-tab="${t.id}">${t.label}</button>`).join("");
+  // within a tab, related views are pills at the top of the page (grouped, with labels, when a tab has several groups)
+  TABS.forEach((t) => {
+    const groups = t.groups.map((id) => GROUPS.find((g) => g.id === id));
+    if (groups.reduce((n, g) => n + g.views.length, 0) < 2) return;
+    groups.forEach((g) => g.views.forEach(([id]) => {
       const inner = document.querySelector(`#v-${id} > .inner`);
-      if (inner) inner.insertAdjacentHTML("afterbegin", `<div class="vseg" role="tablist">${g.views.map(([vid, l]) => `<button class="vs${vid === id ? " on" : ""}" role="tab" data-view="${vid}">${l}</button>`).join("")}</div>`);
-    });
+      if (!inner) return;
+      inner.insertAdjacentHTML("afterbegin", `<div class="vnav">${groups.map((gg) => `<div class="vrow">${groups.length > 1 ? `<span class="vlabel">${gg.label}</span>` : ""}<div class="vseg" role="tablist">${gg.views.map(([vid, l]) => `<button class="vs${vid === id ? " on" : ""}" role="tab" data-view="${vid}">${l}</button>`).join("")}</div></div>`).join("")}</div>`);
+    }));
   });
   function writeHash() {
     const p = [];
-    if (view !== "explore") p.push("v=" + view);
+    if (view !== "find") p.push("v=" + view);
     if (sel.length) p.push("n=" + encodeURIComponent(sel.map((i) => notes[i]).join(",")));
     if (sel.length && tab === "frags") p.push("t=frags");
     try { history.replaceState(null, "", location.pathname + location.search + (p.length ? "#" + p.join("&") : "")); } catch (e) {}
@@ -85,11 +96,11 @@
   }
   window.addEventListener("resize", syncTabH);
   function show(v, scroll) {
-    if (!VIEWS.includes(v)) v = "explore";
+    if (!VIEWS.includes(v)) v = "find";
     view = v;
-    const g = groupOf(v); lastIn[g.id] = v;
+    const g = groupOf(v), tab_ = tabOf(v); if (tab_) lastIn[tab_.id] = v;
     panes.forEach((p) => (p.hidden = p.dataset.view !== v));
-    document.querySelectorAll(".vt").forEach((b) => { const on = b.dataset.group === g.id; b.classList.toggle("on", on); b.setAttribute("aria-selected", on); });
+    document.querySelectorAll(".vt").forEach((b) => { const on = !!tab_ && b.dataset.tab === tab_.id; b.classList.toggle("on", on); b.setAttribute("aria-selected", on); });
     document.querySelector(".aboutlink").classList.toggle("on", v === "about");
     const bar = $("vtabs"), cur = bar.querySelector(".vt.on");
     if (cur) bar.scrollTo({ left: Math.max(0, cur.offsetLeft - (bar.clientWidth - cur.offsetWidth) / 2), behavior: "smooth" });
@@ -111,8 +122,9 @@
       if (!sel.length) { lookupOpen = false; vis(); }
     }
     let el;
-    if ((el = T(".vt"))) { const g = GROUPS.find((x) => x.id === el.dataset.group); show(lastIn[g.id] || g.views[0][0], true); return; }
-    if ((el = T(".vs, .aboutlink"))) { show(el.dataset.view, true); return; }
+    if ((el = T(".vt"))) { const t = TABS.find((x) => x.id === el.dataset.tab); show(lastIn[t.id] || GROUPS.find((g) => g.id === t.groups[0]).views[0][0], true); return; }
+    if (T(".brand")) { e.preventDefault(); show("find", true); return; }
+    if ((el = T("button[data-view], a[data-view]"))) { show(el.dataset.view, true); return; }
     if ((el = T("[data-sort]"))) { sortBy(...el.dataset.sort.split(":")); return; }
     if ((el = T("[data-tab]"))) {
       const same = tab === el.dataset.tab;
@@ -346,7 +358,13 @@
     const segs = mixSegs(famMix(k));
     return `<span class="mix${big ? " big" : ""}" title="${esc(segs.slice(0, 4).map(([v, i]) => D.families[i] + " " + Math.round(v * 100) + "%").join(", "))}">${segs.map(([v, i]) => `<i style="width:${v * 100}%;background:${FP[i][1]}"></i>`).join("")}</span>`;
   }
-  const mixLabel = (k) => mixSegs(famMix(k)).slice(0, 2).map(([, i]) => D.families[i]).join(" · ");
+  // plain words first: the accords people agree on (fresh, spicy, woody...), else the top note families
+  const cap1 = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const mixLabel = (k) => {
+    const acc = P[k][9];
+    if (acc && acc.length) return acc.slice(0, 4).map((i) => cap1(D.accords[i])).join(" · ");
+    return mixSegs(famMix(k)).slice(0, 2).map(([, i]) => D.families[i]).join(" · ");
+  };
 
   /* ---------- live palette ribbon (top of page) ---------- */
   const ribbonEl = $("ribbon");
@@ -601,6 +619,6 @@
   setTimeout(updateRibbon, 80);   // after first paint, so the ribbon fills in
   APP.ready = true;
   const names0 = (hp.get("n") || "").split(",").map((n) => ix.get(n)).filter((i) => i !== undefined);
-  show(hp.get("v") || "explore", false);
+  show(hp.get("v") || (hp.get("n") ? "explore" : "find"), false);
   setSel(names0);
 })();

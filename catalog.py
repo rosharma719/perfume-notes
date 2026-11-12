@@ -247,7 +247,7 @@ def build(main_rows, stat_notes, normalise, fam_of_note, paths, extra_min=150):
         except ValueError: y = 0
         recs.append({"src": "main", "brand": r["brand"], "name": r["name"], "year": y, "gender": GEN.get(r["gender"], -1),
                      "family": r.get("family", ""), "origin": r.get("origin", ""), "ids": idxs(r["notes"]), "pyr": None,
-                     "rating": 0, "reviews": 0, "meta": None, "rank": 0})
+                     "rating": 0, "reviews": 0, "meta": None, "rank": 0, "acc": []})
     for line in open(paths["parfumo"], encoding="utf-8"):
         r = json.loads(line)
         if not r.get("brand_name") or not r.get("perfume_name"): continue
@@ -255,7 +255,8 @@ def build(main_rows, stat_notes, normalise, fam_of_note, paths, extra_min=150):
         ids = sorted({i for p in (pyr or []) for i in p})
         recs.append({"src": "parfumo", "brand": r["brand_name"], "name": r["perfume_name"], "year": r.get("release_year") or 0,
                      "gender": -1, "family": "", "origin": "", "ids": ids, "pyr": pyr, "rating": r.get("rating") or 0,
-                     "reviews": r.get("review_count") or 0, "meta": None, "rank": 0})
+                     "reviews": r.get("review_count") or 0, "meta": None, "rank": 0,
+                     "acc": [a.strip().lower() for a in (r.get("main_accords") or []) if a and a.strip()]})
     for r in read_csv(paths["scento"]):
         pyr = pyramid(split(r["top_notes"]), split(r["heart_notes"]), split(r["base_notes"]))
         ids = sorted({i for p in (pyr or []) for i in p})
@@ -263,7 +264,7 @@ def build(main_rows, stat_notes, normalise, fam_of_note, paths, extra_min=150):
         except (ValueError, KeyError): rank = 0
         recs.append({"src": "scento", "brand": r["house"], "name": r["name"], "year": int(r["year"]) if (r.get("year") or "").isdigit() else 0,
                      "gender": -1, "family": "", "origin": "", "ids": ids, "pyr": pyr, "rating": 0, "reviews": 0,
-                     "meta": [r.get("seasons", ""), r.get("times_of_day", ""), r.get("character", "")], "rank": rank})
+                     "meta": [r.get("seasons", ""), r.get("times_of_day", ""), r.get("character", "")], "rank": rank, "acc": []})
     n_raw = len(recs)
 
     # ---------------- 2. brands: learn aliases, then canonical names within each house
@@ -312,7 +313,7 @@ def build(main_rows, stat_notes, normalise, fam_of_note, paths, extra_min=150):
         for c in clusters:
             rep = c[0]
             row = {"brand": display[rep["root"]], "year": 0, "gender": -1, "family": "", "origin": "", "ids": rep["ids"], "pyr": None,
-                   "rating": 0, "reviews": 0, "src": set(), "meta": None, "rank": 0, "root": rep["root"], "key": key_}
+                   "rating": 0, "reviews": 0, "src": set(), "meta": None, "rank": 0, "acc": [], "root": rep["root"], "key": key_}
             # cleanest display name: fewest brand words, then shortest
             bt = toks_of_root[rep["root"]]
             row["name"] = min((clean_display(m["name"], display[rep["root"]]) for m in c), key=lambda n: (sum(w in bt for w in _words(n)), len(n)))
@@ -324,6 +325,7 @@ def build(main_rows, stat_notes, normalise, fam_of_note, paths, extra_min=150):
                 for f in ("family", "origin"):
                     if m[f] and not row[f]: row[f] = m[f]
                 if m["pyr"] and not row["pyr"]: row["pyr"] = m["pyr"]
+                if m["acc"] and not row["acc"]: row["acc"] = m["acc"]
                 if m["meta"]: row["meta"], row["rank"] = m["meta"], m["rank"] or row["rank"]
                 if m["rating"] and m["reviews"] >= row["reviews"]: row["rating"], row["reviews"] = m["rating"], m["reviews"]
                 if len(m["ids"]) > len(row["ids"]) and prio[m["src"]] > 0 and not row["ids"]: row["ids"] = m["ids"]
@@ -386,7 +388,7 @@ def build(main_rows, stat_notes, normalise, fam_of_note, paths, extra_min=150):
               "uni": dlist("topUnisex"), "houses": dlist("topHouses"),
               "climbers": dlist("quarterlyClimbers", last), "fallers": dlist("quarterlyFallers", last), "period": last}
     stats = {"catalog": len(rows), "raw_records": n_raw, "merged": merged_n, "brand_aliases": len(merged_brands),
-             "rated": sum(1 for r in rows if r["rating"]), "pyramids": sum(1 for r in rows if r["pyr"]),
+             "rated": sum(1 for r in rows if r["rating"]), "accords": sum(1 for r in rows if r["acc"]), "pyramids": sum(1 for r in rows if r["pyr"]),
              "priced": len(priced_list), "priced_matched": sum(1 for e in priced_list if e["k"] >= 0),
              "new_notes": len(extras), "sources": {s: sum(1 for r in rows if s in r["src"]) for s in ("main", "parfumo", "scento")}}
     return rows, priced_list, dupes, demand, stats, extras, merged_brands

@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Sillage</title>
-<meta name="description" content="Which perfume notes go together, and which fragrances fit.">
+<meta name="description" content="Find perfumes you will love. Start from a perfume or a scent you like and see similar perfumes, what is in them, and why they match.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cpath%20d%3D%22M16.12%200.50A15.50%2015.50%200%200%201%2023.64%202.52L19.21%2010.34A6.51%206.51%200%200%200%2016.05%209.49Z%22%20fill%3D%22%23f1d66a%22/%3E%3Cpath%20d%3D%22M23.86%202.64A15.50%2015.50%200%200%201%2029.36%208.14L21.61%2012.70A6.51%206.51%200%200%200%2019.30%2010.39Z%22%20fill%3D%22%23f1b3c8%22/%3E%3Cpath%20d%3D%22M29.48%208.36A15.50%2015.50%200%200%201%2031.50%2015.88L22.51%2015.95A6.51%206.51%200%200%200%2021.66%2012.79Z%22%20fill%3D%22%23ee9f98%22/%3E%3Cpath%20d%3D%22M31.50%2016.12A15.50%2015.50%200%200%201%2029.48%2023.64L21.66%2019.21A6.51%206.51%200%200%200%2022.51%2016.05Z%22%20fill%3D%22%23cfb08c%22/%3E%3Cpath%20d%3D%22M29.36%2023.86A15.50%2015.50%200%200%201%2023.86%2029.36L19.30%2021.61A6.51%206.51%200%200%200%2021.61%2019.30Z%22%20fill%3D%22%23f0b97c%22/%3E%3Cpath%20d%3D%22M23.64%2029.48A15.50%2015.50%200%200%201%2016.12%2031.50L16.05%2022.51A6.51%206.51%200%200%200%2019.21%2021.66Z%22%20fill%3D%22%23c6bad1%22/%3E%3Cpath%20d%3D%22M15.88%2031.50A15.50%2015.50%200%200%201%208.36%2029.48L12.79%2021.66A6.51%206.51%200%200%200%2015.95%2022.51Z%22%20fill%3D%22%23dba6d3%22/%3E%3Cpath%20d%3D%22M8.14%2029.36A15.50%2015.50%200%200%201%202.64%2023.86L10.39%2019.30A6.51%206.51%200%200%200%2012.70%2021.61Z%22%20fill%3D%22%23aadda6%22/%3E%3Cpath%20d%3D%22M2.52%2023.64A15.50%2015.50%200%200%201%200.50%2016.12L9.49%2016.05A6.51%206.51%200%200%200%2010.34%2019.21Z%22%20fill%3D%22%23e69f84%22/%3E%3Cpath%20d%3D%22M0.50%2015.88A15.50%2015.50%200%200%201%202.52%208.36L10.34%2012.79A6.51%206.51%200%200%200%209.49%2015.95Z%22%20fill%3D%22%2392d1b0%22/%3E%3Cpath%20d%3D%22M2.64%208.14A15.50%2015.50%200%200%201%208.14%202.64L12.70%2010.39A6.51%206.51%200%200%200%2010.39%2012.70Z%22%20fill%3D%22%239dc4ee%22/%3E%3Cpath%20d%3D%22M8.36%202.52A15.50%2015.50%200%200%201%2015.88%200.50L15.95%209.49A6.51%206.51%200%200%200%2012.79%2010.34Z%22%20fill%3D%22%23b5c093%22/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 </head>
-<body data-view="explore">
+<body data-view="find">
 
 <div class="chrome" id="chrome">
 <div class="ribbon" id="ribbon" aria-hidden="true"></div>
@@ -24,9 +24,32 @@
 
 <main>
 
-<div class="pane" id="v-explore" data-view="explore">
+<section class="pane" id="v-find" data-view="find">
+  <div class="inner">
+    <h1 class="hero-h">Find perfumes you’ll love</h1>
+    <p class="hero-p">Start with something you already know you like. See similar perfumes, what’s in them, and why they match. Nothing to set up.</p>
+    <div class="starts">
+      <div class="start">
+        <h2>I love a perfume</h2>
+        <input id="fp-q" type="search" placeholder="Type a perfume, e.g. Sauvage" autocomplete="off" spellcheck="false" aria-label="A perfume you love">
+        <ul id="fp-sugg" class="sugg"></ul>
+        <p class="eg">Or try <span id="fp-eg"></span></p>
+      </div>
+      <div class="start">
+        <h2>I like certain scents</h2>
+        <p class="eg">Pick one or more.</p>
+        <div id="fn-chips" class="chiprow"></div>
+        <p class="eg"><button class="linkish" data-view="explore">See all notes on the map</button></p>
+      </div>
+    </div>
+    <div id="find-out"></div>
+  </div>
+</section>
+
+<div class="pane" id="v-explore" data-view="explore" hidden>
   <section class="lab" id="table">
     <div class="inner">
+      <p class="intro-line">Tap a note you like. The map lights up the notes that usually go with it. Then open <b>Fragrances</b> to see real perfumes that use them.</p>
       <div class="finder">
         <input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="Find a note (press /)" aria-label="Find a note">
         <button id="lookup" class="linkish">Browse perfumes</button>
@@ -43,7 +66,7 @@
 
 <section class="pane" id="v-taste" data-view="taste" hidden>
   <div class="inner">
-    <p class="lede">Tap a note to cycle: <b>love</b>, <b>avoid</b>, off. Everything here is saved in this browser only.</p>
+    <p class="lede">Mark notes you <b>love</b> (+) or want to <b>avoid</b> (−); tap again to clear. <b>Picks</b> uses this to suggest perfumes. Saved only in this browser.</p>
     <p class="tbar"><span id="taste-sum"></span><span><button class="linkish" data-export>Export</button><label class="linkish filelab">Import<input id="import" type="file" accept="application/json" hidden></label><button class="linkish" data-clear-me>Reset</button></span></p>
     <p class="tbar"><span class="save-status"></span><span><button class="linkish" data-backup-link>Copy backup link</button></span></p>
     <div id="taste-board" class="board tboard"></div>
@@ -56,7 +79,7 @@
 
 <section class="pane" id="v-collection" data-view="collection" hidden>
   <div class="inner">
-    <p class="lede">What you own. Shop steers away from near-copies and towards what fills gaps.</p>
+    <p class="lede">Add the perfumes you own. <b>Picks</b> then avoids near-copies and favours what fills gaps. You’ll also see which scents you lean on.</p>
     <p class="tbar"><span class="save-status"></span><span><button class="linkish" data-backup-link>Copy backup link</button><button class="linkish" data-export>Download</button><label class="linkish filelab">Import<input id="import2" type="file" accept="application/json" hidden></label></span></p>
     <div id="coll-unres"></div>
     <input id="coll-q" class="tabfilter" type="search" placeholder="Search a perfume to add" autocomplete="off" aria-label="Search a perfume to add">
@@ -71,6 +94,7 @@
 
 <section class="pane" id="v-shop" data-view="shop" hidden>
   <div class="inner">
+    <p class="lede">Perfumes ranked for you, from the notes you love, what you own and what you avoid. Each shows <i>why</i> it was picked.</p>
     <div id="shop-ctl"></div>
     <p id="shop-sum" class="hint"></p>
     <ul id="shop-list" class="flist"></ul>
@@ -80,7 +104,7 @@
 
 <section class="pane" id="v-pairs" data-view="pairs" hidden>
   <div class="inner">
-    <p class="lede">Notes that appear together far more often than their popularity predicts.</p>
+    <p class="lede">Notes perfumers pair far more often than chance. Use it to guess what a perfume smells like, or to build a combination. <b>Fragrances</b> shows perfumes that use a pair.</p>
     <input class="tabfilter" data-filter="t-pairs" type="search" placeholder="Filter by note" aria-label="Filter">
     <table class="grid" id="t-pairs"></table>
   </div>
@@ -96,7 +120,7 @@
 
 <section class="pane" id="v-swap" data-view="swap" hidden>
   <div class="inner">
-    <p class="lede">Notes with near-identical partners that rarely appear together. Candidates to swap for each other.</p>
+    <p class="lede">Notes that play the same role but are rarely used together, so one can often replace the other.</p>
     <input class="tabfilter" data-filter="t-swap" type="search" placeholder="Filter by note" aria-label="Filter">
     <table class="grid" id="t-swap"></table>
   </div>
@@ -197,5 +221,6 @@
 <script src="data.js"></script>
 <script src="app.js"></script>
 <script src="me.js"></script>
+<script src="find.js"></script>
 </body>
 </html>
