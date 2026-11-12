@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What Goes With What</title>
+<meta name="description" content="A periodic table of perfume notes. Tap one and see what it pairs with across 26,000 formulas.">
+<link rel="preload" href="fonts/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="top-in">
+    <h1>What goes<br>with what</h1>
+    <p class="dek">A table of <b id="n-notes">153</b> perfume notes, wired together by <b id="n-perf">26,296</b> formulas. Tap a note and the rest of the table relights by how often it keeps company.</p>
+  </div>
+  <div class="strip" id="strip" aria-hidden="true"></div>
+</header>
+
+<main>
+
+<section class="lab" id="table">
+  <div class="inner">
+    <div class="legend">
+      <span><i class="k hot"></i>pairs far more than chance</span>
+      <span><i class="k mid"></i>about as expected</span>
+      <span><i class="k cold"></i>keeps away</span>
+      <span class="tip">Tap more tiles to stack them. Small number on a tile = lift.</span>
+    </div>
+    <div class="lab-grid">
+      <div id="board" class="board"></div>
+      <aside id="panel" class="panel" aria-live="polite"></aside>
+    </div>
+  </div>
+</section>
+
+<section class="dark" id="surprising">
+  <div class="inner">
+    <h2>Odd couples</h2>
+    <p class="intro">Pairs that turn up together far more than their popularity predicts. Usually the two share a facet: both resins, both roasted, both green-and-bitter.</p>
+    <div class="pairs" id="t-surprising"></div>
+  </div>
+</section>
+
+<section id="trios">
+  <div class="inner">
+    <h2>Three&#8209;note signatures</h2>
+    <p class="intro">The left column is the tightest trios, the combinations that read as a single idea. The right is what you’ll actually find most often, which is mostly musk and jasmine plus whoever is nearby.</p>
+    <div class="two">
+      <div><h3>Tightest</h3><div class="stack" id="t-trios"></div></div>
+      <div><h3>Most common</h3><div class="stack" id="t-common"></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="grey" id="avoid">
+  <div class="inner">
+    <h2>Never in the same room</h2>
+    <p class="intro">Well-used notes that almost never meet. The numbers show how many perfumes contain both, against how many you’d expect if notes were chosen at random.</p>
+    <div class="pairs light" id="t-avoid"></div>
+  </div>
+</section>
+
+<section id="time">
+  <div class="inner">
+    <h2>Rising and fading</h2>
+    <p class="intro">Share of perfumes containing each note across five periods, before 2005 up to 2020 and later. Three quarters of the perfumes here are from 2015 on, so the early bars rest on fewer formulas.</p>
+    <div class="two">
+      <div><h3>Gaining ground</h3><div class="stack" id="t-rise"></div></div>
+      <div><h3>Losing ground</h3><div class="stack" id="t-fall"></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="grey" id="gender">
+  <div class="inner">
+    <h2>His, hers, and the notes in between</h2>
+    <p class="intro">Share of men’s-marketed and women’s-marketed perfumes that contain each note. Those are shelf categories, not facts about noses, but the split is stark.</p>
+    <div class="two">
+      <div><h3>Leans men’s</h3><div class="stack" id="t-men"></div></div>
+      <div><h3>Leans women’s</h3><div class="stack" id="t-women"></div></div>
+    </div>
+    <p class="axis"><span><i class="k m"></i>men’s</span><span><i class="k w"></i>women’s</span></p>
+  </div>
+</section>
+
+<section id="method">
+  <div class="inner">
+    <h2>How this was made</h2>
+    <div class="three small">
+      <p><b>Lift</b> is how many times more often two notes appear together than if each were scattered independently. 1× is chance, 3× is three times as often. With several notes selected, it compares a note’s share among matching perfumes with its share overall.</p>
+      <p><b>Cleaning.</b> 394 raw labels were merged into 153. Origins were dropped (<i>Jasmine (Egypt)</i> becomes Jasmine), aroma-chemicals folded into the note they imitate (<i>Galaxolide (Musk)</i> becomes Musk), and synonyms joined. Family colours are hand-assigned.</p>
+      <p><b>Source.</b> The open <i>doevent/perfume</i> dataset, a 2024 snapshot, not a direct Fragrantica export. Note lists are flat, with no top, heart or base. Mass-market ranges are heavily represented, so “common” leans clean, sweet and musky. Tables ignore anything under about 40 perfumes.</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<div class="dock" id="dock"><span id="dock-txt"></span><a href="#panel">Details</a></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

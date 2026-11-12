@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Perfume Note Graph</title>
+<style>
+:root{--bg:#fafaf8;--fg:#1d1d1b;--mut:#6b6b66;--card:#fff;--line:#d9d9d2}
+@media(prefers-color-scheme:dark){:root{--bg:#161615;--fg:#ececE6;--mut:#a0a09a;--card:#222220;--line:#3a3a36}}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:14px system-ui,sans-serif}
+#app{display:flex;height:100%}
+#side{width:300px;padding:14px;box-sizing:border-box;overflow:auto;border-right:1px solid var(--line);background:var(--card)}
+#side h1{font-size:17px;margin:0 0 4px}.mut{color:var(--mut);font-size:12px}
+input{width:100%;box-sizing:border-box;padding:7px;margin:10px 0;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+.leg{display:flex;align-items:center;gap:6px;margin:3px 0;cursor:pointer;user-select:none}.leg i{width:11px;height:11px;border-radius:50%}
+.leg.off{opacity:.3}
+#info{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+#info li{margin:2px 0}
+svg{flex:1;min-width:0;height:100%}
+text{fill:var(--fg);pointer-events:none;paint-order:stroke;stroke:var(--bg);stroke-width:3px}
+@media(max-width:700px){#app{flex-direction:column}#side{width:auto;max-height:42%;border-right:0;border-bottom:1px solid var(--line)}}
+</style></head><body>
+<div id="app"><div id="side">
+<h1>Perfume note graph</h1>
+<div class="mut">Nodes = deduped notes (size = # perfumes). Edges = perfumes containing both notes (strong, over-represented pairs only; full data in the CSV/GraphML). Click a note or edge.</div>
+<input id="q" placeholder="Find a note…">
+<div id="legend"></div>
+<div id="info" class="mut">Nothing selected.</div>
+</div><svg id="g"></svg></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+const D=__DATA__;
+const pal=["#4e79a7","#f28e2b","#e15759","#76b7b2","#59a14f","#edc948","#b07aa1","#ff9da7","#9c755f","#7b4fb0","#8cd17d","#bab0ac","#888"];
+const col=f=>pal[D.families.indexOf(f)];
+const svg=d3.select("#g"),W=()=>svg.node().clientWidth,H=()=>svg.node().clientHeight;
+const root=svg.append("g");svg.call(d3.zoom().scaleExtent([.2,6]).on("zoom",e=>root.attr("transform",e.transform)));
+const off=new Set();
+const r=d=>3+Math.sqrt(d.count)*0.38;
+const links=D.links.map(d=>({...d})),nodes=D.nodes.map(d=>({...d}));
+const maxW=d3.max(links,d=>d.weight);
+const sim=d3.forceSimulation(nodes).force("link",d3.forceLink(links).id(d=>d.id).distance(d=>90-Math.min(50,d.pmi*25)).strength(d=>Math.min(.5,d.pmi/4)))
+ .force("charge",d3.forceManyBody().strength(-120)).force("center",d3.forceCenter(W()/2,H()/2)).force("coll",d3.forceCollide(d=>r(d)+2));
+const L=root.append("g").selectAll("line").data(links).join("line").attr("stroke","#999").attr("stroke-opacity",.25).attr("stroke-width",d=>.4+3*d.weight/maxW);
+const N=root.append("g").selectAll("circle").data(nodes).join("circle").attr("r",r).attr("fill",d=>col(d.family)).attr("stroke","#fff").attr("stroke-width",.6);
+const T=root.append("g").selectAll("text").data(nodes).join("text").attr("font-size",d=>d.count>800?12:9).attr("dx",d=>r(d)+2).attr("dy",3).text(d=>d.id);
+N.call(d3.drag().on("start",(e,d)=>{if(!e.active)sim.alphaTarget(.3).restart();d.fx=d.x;d.fy=d.y}).on("drag",(e,d)=>{d.fx=e.x;d.fy=e.y}).on("end",(e,d)=>{if(!e.active)sim.alphaTarget(0);d.fx=d.fy=null}));
+sim.on("tick",()=>{L.attr("x1",d=>d.source.x).attr("y1",d=>d.source.y).attr("x2",d=>d.target.x).attr("y2",d=>d.target.y);N.attr("cx",d=>d.x).attr("cy",d=>d.y);T.attr("x",d=>d.x).attr("y",d=>d.y)});
+const info=document.getElementById("info");
+const esc=s=>s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+function focus(set){N.attr("opacity",d=>!set||set.has(d.id)?1:.08);T.attr("opacity",d=>!set||set.has(d.id)?1:.05);L.attr("stroke-opacity",d=>!set?.25:(set.has(d.source.id)&&set.has(d.target.id)?.8:.03))}
+N.on("click",(e,d)=>{const nb=links.filter(l=>l.source.id==d.id||l.target.id==d.id).sort((a,b)=>b.weight-a.weight);
+ focus(new Set([d.id,...nb.flatMap(l=>[l.source.id,l.target.id])]));
+ info.innerHTML=`<b>${esc(d.id)}</b><br>${d.count} perfumes · ${esc(d.family)}<br><br>Top linked notes:<ul>`+nb.slice(0,15).map(l=>{const o=l.source.id==d.id?l.target.id:l.source.id;return `<li>${esc(o)} — ${l.weight}</li>`}).join("")+"</ul>"});
+L.on("click",(e,l)=>{focus(new Set([l.source.id,l.target.id]));info.innerHTML=`<b>${esc(l.source.id)} + ${esc(l.target.id)}</b><br>${l.weight} shared perfumes (PMI ${l.pmi})<br><br>Examples:<ul>`+l.examples.map(x=>`<li>${esc(x)}</li>`).join("")+"</ul>"});
+svg.on("dblclick.reset",()=>{focus(null);info.textContent="Nothing selected."});
+document.getElementById("q").oninput=e=>{const v=e.target.value.toLowerCase();focus(v?new Set(nodes.filter(n=>n.id.toLowerCase().includes(v)).map(n=>n.id)):null)};
+const lg=d3.select("#legend").selectAll("div").data(D.families).join("div").attr("class","leg").html(f=>`<i style="background:${col(f)}"></i>${f}`).on("click",function(e,f){off.has(f)?off.delete(f):off.add(f);d3.select(this).classed("off",off.has(f));N.attr("display",d=>off.has(d.family)?"none":null);T.attr("display",d=>off.has(d.family)?"none":null);L.attr("display",l=>off.has(l.source.family)||off.has(l.target.family)?"none":null)});
+</script></body></html>
