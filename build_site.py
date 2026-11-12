@@ -107,7 +107,7 @@ def main():
     size_rows = [{"note": notes[i], "mean": round(float(mean_sz[i]), 1), "n": int(fv[i])} for i in pick]
     size_rows.sort(key=lambda d: d["mean"])
     size = {"mean": round(float(sz.mean()), 1), "median": float(np.median(sz)),
-            "small": size_rows[:10], "large": size_rows[::-1][:10]}
+            "small": size_rows[:10], "large": size_rows[::-1][:10], "all": size_rows}
 
     # pairs rising / fading: 2020+ vs up to 2014
     years = np.array([yr(r) for r in rows])
