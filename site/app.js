@@ -9,6 +9,23 @@
   const times = (x) => (x >= 10 ? x.toFixed(0) : x.toFixed(1)) + "×";
   const mobile = () => window.matchMedia("(max-width:980px)").matches;
 
+  // soft family palette: [pale tint, mid tone, deep tone]
+  const FP = [
+    ["#fbf1c7", "#f1d66a", "#7a6100"], // Citrus
+    ["#fbe5ed", "#f1b3c8", "#a03a5c"], // White Floral
+    ["#fadbd7", "#ee9f98", "#a5352d"], // Rose & Garden Floral
+    ["#ece1d4", "#cfb08c", "#6a4a2a"], // Woody
+    ["#fbe4cb", "#f0b97c", "#97580f"], // Amber & Resin
+    ["#e9e4ee", "#c6bad1", "#5e4e70"], // Musk & Animal
+    ["#f4ddf0", "#dba6d3", "#86307a"], // Sweet & Gourmand
+    ["#e0f3de", "#aadda6", "#2e7733"], // Fruity
+    ["#f8dccf", "#e69f84", "#983b1d"], // Spicy
+    ["#d9efe4", "#92d1b0", "#1e6844"], // Green & Herbal
+    ["#dae8f8", "#9dc4ee", "#235a98"], // Aquatic & Aldehydic
+    ["#e3e7d5", "#b5c093", "#54672b"], // Earthy & Mossy
+  ];
+  const fs = (i) => `--p:${FP[FO[i]][0]};--m:${FP[FO[i]][1]};--d:${FP[FO[i]][2]}`;
+
   $("n-perf").textContent = fmt(N);
   $("n-notes").textContent = notes.length;
   const avgAll = P.reduce((a, p) => a + p[4].length, 0) / N;
@@ -38,9 +55,9 @@
   notes.forEach((n, i) => byFam[FO[i]].push(i));
   board.innerHTML = byFam.map((list, fi) => {
     const cols = Math.min(6, Math.max(2, Math.ceil(Math.sqrt(list.length * 1.5))));
-    return `<div class="fam"><h4>${esc(D.families[fi])}</h4><div class="g" style="grid-template-columns:repeat(${cols},4.7rem)">` +
+    return `<div class="fam" data-f="${fi}"><h4>${esc(D.families[fi])}</h4><div class="g" style="grid-template-columns:repeat(${cols},4.7rem)">` +
       list.map((i) =>
-        `<button class="tile" data-i="${i}" title="${esc(notes[i])}: ${fmt(F[i])} perfumes" aria-label="${esc(notes[i])}">` +
+        `<button class="tile" data-i="${i}" style="${fs(i)}" title="${esc(notes[i])}: ${fmt(F[i])} perfumes" aria-label="${esc(notes[i])}">` +
         `<span class="rk">${i + 1}</span><span class="lf"></span><b class="sy">${sym[i]}</b><span class="nm">${esc(notes[i])}</span></button>`
       ).join("") + "</div></div>";
   }).join("");
@@ -48,7 +65,7 @@
   const tileOf = new Map(tiles.map((t) => [+t.dataset.i, t]));
 
   let sel = [];
-  const chip = (i, attr) => `<button class="chip" ${attr || `data-set="${esc(notes[i])}"`}>${esc(notes[i])}</button>`;
+  const chip = (i, attr) => `<button class="chip" ${attr || `data-set="${esc(notes[i])}"`} style="${fs(i)}">${esc(notes[i])}</button>`;
   const chipSet = (names) => names.map((n) => chip(ix.get(n), `data-set="${esc(names.join("|"))}"`));
 
   let tab = "pairs", ctx = null;
@@ -157,7 +174,7 @@
     const distinct = cand.filter((d) => d.c >= minC && d.lift > 1.2).sort((a, b) => b.lift - a.lift).slice(0, 7);
     const seldom = cand.filter((d) => d.exp >= Math.max(6, M * 0.03) && F[d.i] >= 250).sort((a, b) => a.lift - b.lift).slice(0, 6);
     const list = (arr, bar, val) => arr.length
-      ? `<ul class="plist">` + arr.map((d) => `<li>${chip(d.i, `data-tog="${d.i}"`)}<span class="bar"><i style="width:${bar(d)}%"></i></span><span class="v">${val(d)}</span></li>`).join("") + "</ul>"
+      ? `<ul class="plist">` + arr.map((d) => `<li style="${fs(d.i)}">${chip(d.i, `data-tog="${d.i}"`)}<span class="bar"><i style="width:${bar(d)}%"></i></span><span class="v">${val(d)}</span></li>`).join("") + "</ul>"
       : `<p class="hint">Too few perfumes to say.</p>`;
     let h = `<button class="cta" data-tab="frags">Find fragrances with ${sel.length > 1 ? "these notes" : "this note"} <b>${fmt(M)}</b></button>`;
     h += `<h5>Most often with</h5><p class="hint">Tap a note to add it to your combination.</p>` + list(often, (d) => (d.share / often[0].share) * 100, (d) => pct(d.share));
@@ -165,7 +182,7 @@
     h += `<h5>Hardly ever with</h5>` + list(seldom, (d) => Math.max(2, (1 - d.lift) * 100), (d) => d.c + "/" + Math.round(d.exp));
     if (sel.length === 1 && D.similar[sel[0]].length) {
       h += `<h5>Possible stand-ins</h5><p class="hint">Similar partners, rarely used together</p><ul class="plist">` +
-        D.similar[sel[0]].slice(0, 5).map(([j, s]) => `<li>${chip(j, `data-tog="${j}"`)}<span class="bar"><i style="width:${Math.round(s * 100)}%"></i></span><span class="v">${Math.round(s * 100)}%</span></li>`).join("") + "</ul>";
+        D.similar[sel[0]].slice(0, 5).map(([j, s]) => `<li style="${fs(j)}">${chip(j, `data-tog="${j}"`)}<span class="bar"><i style="width:${Math.round(s * 100)}%"></i></span><span class="v">${Math.round(s * 100)}%</span></li>`).join("") + "</ul>";
     }
     return h;
   }
@@ -209,7 +226,7 @@
       const missing = sel.filter((i) => !ids.includes(i)).map((i) => notes[i]);
       return `<li class="frag"><div class="ft"><b>${esc(name)}</b> <span>${esc(brand)}</span></div>` +
         `<div class="fm">${year || "year unknown"} · ${GL[g]} · ${ids.length} ${ids.length === 1 ? "note" : "notes"}${missing.length ? ` · <u>missing ${esc(missing.join(", "))}</u>` : ""}</div>` +
-        `<div class="fn">${mine.map((i) => `<span class="n hit">${esc(notes[i])}</span>`).join("")}` +
+        `<div class="fn">${mine.map((i) => `<span class="n hit" style="${fs(i)}">${esc(notes[i])}</span>`).join("")}` +
         rest.slice(0, 9).map((i) => `<span class="n">${esc(notes[i])}</span>`).join("") +
         (rest.length > 9 ? `<span class="n more">+${rest.length - 9}</span>` : "") + `</div>` +
         `<a class="fl" target="_blank" rel="noopener" href="https://duckduckgo.com/?q=${encodeURIComponent(name + " " + brand + " perfume")}">Look it up</a></li>`;
@@ -234,7 +251,7 @@
 
   const bars = (d) => {
     const mx = Math.max(...d.share);
-    return `<span class="bars" title="${D.bins.join(" · ")}">` + d.share.map((s) => `<i style="height:${Math.max(6, (s / mx) * 100)}%"></i>`).join("") + "</span>";
+    return `<span class="bars" style="${fs(ix.get(d.note))}" title="${D.bins.join(" · ")}">` + d.share.map((s) => `<i style="height:${Math.max(6, (s / mx) * 100)}%"></i>`).join("") + "</span>";
   };
   const timeRow = (d) => `<div class="row">${chip(ix.get(d.note))}<span class="grow"></span>${bars(d)}<span class="v">${pct(d.share[d.share.length - 1])}</span><span class="m">was ${pct(d.share[0])}</span></div>`;
   const byDelta = D.time.slice().sort((a, b) => b.delta - a.delta);
@@ -247,7 +264,7 @@
 
   $("t-houses").innerHTML = D.house.slice(0, 24).map((b) =>
     `<div class="house"><div class="hn">${esc(b.brand.replace(/'S\b/g, "'s"))}</div><div class="hm">${fmt(b.n)} perfumes · ${b.mean} notes each on average</div><div class="hc">` +
-    b.top.map((t) => `<button class="chip" data-set="${esc(t.note)}">${esc(t.note)}<i>${times(t.lift)}</i></button>`).join("") + "</div></div>").join("");
+    b.top.map((t) => `<button class="chip" data-set="${esc(t.note)}" style="${fs(ix.get(t.note))}">${esc(t.note)}<i>${times(t.lift)}</i></button>`).join("") + "</div></div>").join("");
 
   const sizeRow = (d) => `<div class="row">${chip(ix.get(d.note))}<span class="grow"></span><span class="m">${fmt(d.n)} perfumes</span><span class="v">${d.mean}</span></div>`;
   $("t-small").innerHTML = D.size.small.map(sizeRow).join("");
@@ -259,6 +276,22 @@
   const byLean = D.gender.slice().sort((a, b) => b.lean - a.lean);
   $("t-men").innerHTML = byLean.slice(0, 12).map(gRow).join("");
   $("t-women").innerHTML = byLean.slice(-12).reverse().map(gRow).join("");
+
+  /* ---------- family legend / spotlight ---------- */
+  let solo = null;
+  $("fams").innerHTML = D.families.map((f, fi) => `<button class="fpill" data-fam="${fi}" style="--p:${FP[fi][0]};--m:${FP[fi][1]};--d:${FP[fi][2]}">${esc(f)}</button>`).join("");
+  function applySolo() {
+    board.classList.toggle("solo", solo !== null);
+    board.querySelectorAll(".fam").forEach((el) => el.classList.toggle("on", +el.dataset.f === solo));
+    $("fams").querySelectorAll(".fpill").forEach((el) => el.classList.toggle("on", +el.dataset.fam === solo));
+  }
+  document.addEventListener("click", (e) => {
+    const f = e.target.closest("[data-fam]");
+    if (!f) return;
+    const v = +f.dataset.fam;
+    solo = solo === v ? null : v;
+    applySolo();
+  });
 
   /* ---------- boot ---------- */
   $("try").innerHTML = "<span>Try</span>" + ["Oud", "Vanilla", "Iris", "Vetiver", "Rose", "Tonka Bean"].map((n) => chip(ix.get(n))).join("");
