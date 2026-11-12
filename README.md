@@ -21,7 +21,11 @@ Clustering: 12 hand-curated families plus data-driven Louvain communities on pos
 ## Site
 
 `site/` is a static page, no build step: open `site/index.html` or serve the folder (Archivo is self-hosted in `site/fonts`).
-It is a periodic table of notes: tap a tile and the table relights by lift, with a side panel of partners and example perfumes.
-Below it are tables for odd couples, trios, pairs that never meet, change over time, and men's/women's lean.
+Deploy on Vercel with Root Directory `site`, Framework "Other", no build command.
 
-Regenerate its data with `python3 build_site.py` (writes `site/data.js`).
+A periodic table of notes: tap a tile and the table relights by lift, with a side panel (a bottom sheet on phones)
+listing partners, stand-ins and example perfumes. Below it: odd couples, stand-ins (notes with similar partner
+profiles that rarely appear together), trios, pairs that never meet, notes and pairings rising or fading,
+house styles, formula size, and men's/women's lean.
+
+Regenerate its data with `python3 build_site.py` (needs `numpy`; writes `site/data.js`).
