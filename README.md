@@ -23,9 +23,11 @@ Clustering: 12 hand-curated families plus data-driven Louvain communities on pos
 `site/` is a static page, no build step: open `site/index.html` or serve the folder (Archivo is self-hosted in `site/fonts`).
 Deploy on Vercel with Root Directory `site`, Framework "Other", no build command.
 
-A periodic table of notes: tap a tile and the table relights by lift, with a side panel (a bottom sheet on phones)
-with a Pairings tab (partners, stand-ins) and a Fragrances tab (real perfumes containing your notes, filterable by gender and name, with near-matches when nothing has every note). On phones notes become readable name chips. Below it: odd couples, stand-ins (notes with similar partner
-profiles that rarely appear together), trios, pairs that never meet, notes and pairings rising or fading,
-house styles, formula size, and men's/women's lean.
+Ten tabs (sticky bar, scrolls sideways on phones; the URL hash keeps tab + selection so views are shareable):
+- **Explore**: periodic table of notes. Tap a note and related notes light up in their family colour while unrelated ones go gray
+  (colour is relative to the other notes for that selection). Side panel / bottom sheet with Pairings, and Fragrances
+  (filter by name, audience, sort, near-matches, *Find similar*, CSV download). "Look up a perfume" works without selecting notes.
+- **Odd couples, Stand-ins, Trios, Never together**: filterable lists; rows jump to the matching fragrances.
+- **Trends, Houses** (browse a house's fragrances), **Formula size, His & hers, About**.
 
 Regenerate its data with `python3 build_site.py` (needs `numpy`; writes `site/data.js`).

@@ -8,6 +8,7 @@
   const pct = (x) => (x * 100).toFixed(x < 0.1 ? 1 : 0) + "%";
   const times = (x) => (x >= 10 ? x.toFixed(0) : x.toFixed(1)) + "×";
   const mobile = () => window.matchMedia("(max-width:980px)").matches;
+  const GL = ["men’s", "women’s", "unisex"];
 
   // soft family palette: [pale tint, mid tone, deep tone]
   const FP = [
@@ -31,7 +32,6 @@
   const avgAll = P.reduce((a, p) => a + p[4].length, 0) / N;
   $("avg-size").textContent = avgAll.toFixed(1);
 
-  // presence matrix
   const has = notes.map(() => new Uint8Array(N));
   P.forEach((p, k) => p[4].forEach((i) => (has[i][k] = 1)));
 
@@ -64,46 +64,104 @@
   const tiles = [...board.querySelectorAll(".tile")];
   const tileOf = new Map(tiles.map((t) => [+t.dataset.i, t]));
 
-  let sel = [];
-  const chip = (i, attr) => `<button class="chip" ${attr || `data-set="${esc(notes[i])}"`} style="${fs(i)}">${esc(notes[i])}</button>`;
-  const chipSet = (names) => names.map((n) => chip(ix.get(n), `data-set="${esc(names.join("|"))}"`));
-
-  let tab = "pairs", ctx = null;
+  /* ---------- state ---------- */
+  let sel = [], tab = "pairs", ctx = null, lastOut = [], lookupOpen = false, solo = null;
   const fo = { gender: "all", sort: "clean", near: false, q: "", shown: 15 };
-  const GL = ["men’s", "women’s", "unisex"];
+  const chip = (i, attr) => `<button class="chip" ${attr || `data-set="${esc(notes[i])}"`} style="${fs(i)}">${esc(notes[i])}</button>`;
+  const chips = (names, join) => names.map((n) => chip(ix.get(n))).join(join || " ");
+
+  /* ---------- views (tabs) + url ---------- */
+  const VIEWS = ["explore", "odd", "swap", "trios", "avoid", "trends", "houses", "formulas", "gender", "about"];
+  let view = "explore";
+  const tabbar = $("tabbar"), vts = [...tabbar.querySelectorAll(".vt")], panes = [...document.querySelectorAll(".pane")];
+  function writeHash() {
+    const p = [];
+    if (view !== "explore") p.push("v=" + view);
+    if (sel.length) p.push("n=" + encodeURIComponent(sel.map((i) => notes[i]).join(",")));
+    if (sel.length && tab === "frags") p.push("t=frags");
+    try { history.replaceState(null, "", location.pathname + location.search + (p.length ? "#" + p.join("&") : "")); } catch (e) {}
+  }
+  function show(v, scroll) {
+    if (!VIEWS.includes(v)) v = "explore";
+    view = v;
+    panes.forEach((p) => (p.hidden = p.dataset.view !== v));
+    vts.forEach((b) => { const on = b.dataset.view === v; b.classList.toggle("on", on); b.setAttribute("aria-selected", on); });
+    document.body.dataset.view = v;
+    if (v !== "explore") $("panel").classList.remove("open");
+    writeHash();
+    if (scroll) { const top = tabbar.offsetTop; if (window.scrollY > top) window.scrollTo(0, top); }
+    const on = vts.find((b) => b.dataset.view === v);
+    if (on && on.scrollIntoView) { try { on.scrollIntoView({ inline: "center", block: "nearest" }); } catch (e) {} }
+  }
+  const vis = () => document.body.classList.toggle("has-sel", sel.length > 0 || lookupOpen);
+
+  /* ---------- clicks ---------- */
   document.addEventListener("click", (e) => {
-    const panel = $("panel");
-    if (mobile() && panel.classList.contains("open") && !e.target.closest("#panel")) panel.classList.remove("open");
-    const tb = e.target.closest("[data-tab]");
-    if (tb) {
-      const same = tab === tb.dataset.tab;
-      tab = tb.dataset.tab;
-      if (mobile()) panel.classList.toggle("open", !(same && panel.classList.contains("open")));
-      renderPanel(true); return;
+    const panel = $("panel"), T = (s) => e.target.closest(s);
+    if (mobile() && panel.classList.contains("open") && !T("#panel")) {
+      panel.classList.remove("open");
+      if (!sel.length) { lookupOpen = false; vis(); }
     }
-    const f = e.target.closest("[data-fo]");
-    if (f) { const [k, v] = f.dataset.fo.split(":"); fo[k] = v; fo.shown = 15; renderPanel(); return; }
-    if (e.target.closest("[data-more]")) { fo.shown += 15; renderFrags(); return; }
-    const t = e.target.closest(".tile, [data-tog]");
-    if (t) { toggle(+(t.dataset.i ?? t.dataset.tog)); if (t.classList.contains("tile")) panel.classList.remove("open"); return; }
-    const s = e.target.closest("[data-set]");
-    if (s) { setSel(s.dataset.set.split("|").map((n) => ix.get(n))); $("table").scrollIntoView({ behavior: "smooth" }); return; }
-    if (e.target.closest(".phead") && mobile()) panel.classList.toggle("open");
+    let el;
+    if ((el = T(".vt"))) { show(el.dataset.view, true); return; }
+    if ((el = T("[data-tab]"))) {
+      const same = tab === el.dataset.tab;
+      tab = el.dataset.tab;
+      if (mobile()) panel.classList.toggle("open", !(same && panel.classList.contains("open")));
+      writeHash(); renderPanel(true); return;
+    }
+    if ((el = T("[data-fo]"))) { const [k, v] = el.dataset.fo.split(":"); fo[k] = v; fo.shown = 15; renderPanel(); return; }
+    if (T("[data-more]")) { fo.shown += 15; renderFrags(); return; }
+    if ((el = T("[data-sim]"))) { toggleSim(+el.dataset.sim, el); return; }
+    if (T("[data-csv]")) { downloadCsv(); return; }
+    if ((el = T("[data-house]"))) { goHouse(el.dataset.house); return; }
+    if (T("#lookup")) { openLookup(); return; }
+    if (T("#clear")) { setSel([]); return; }
+    if ((el = T("[data-fam]"))) { const v = +el.dataset.fam; solo = solo === v ? null : v; applySolo(); return; }
+    if ((el = T(".tile, [data-tog]"))) {
+      toggle(+(el.dataset.i ?? el.dataset.tog));
+      if (el.classList.contains("tile")) panel.classList.remove("open");
+      return;
+    }
+    if ((el = T("[data-set]"))) {
+      tab = el.dataset.go === "frags" ? "frags" : "pairs";
+      setSel(el.dataset.set.split("|").map((n) => ix.get(n)));
+      if (view !== "explore") show("explore", true); else $("table").scrollIntoView({ behavior: "smooth" });
+      if (mobile() && tab === "frags") panel.classList.add("open");
+      return;
+    }
+    if (T(".phead") && mobile()) panel.classList.toggle("open");
   });
   $("panel").addEventListener("input", (e) => { if (e.target.id === "fq") { fo.q = e.target.value; fo.shown = 15; renderFrags(); } });
   $("panel").addEventListener("change", (e) => {
     if (e.target.id === "fsort") { fo.sort = e.target.value; fo.shown = 15; renderFrags(); }
     if (e.target.id === "fnear") { fo.near = e.target.checked; fo.shown = 15; renderFrags(); }
   });
-  $("clear").addEventListener("click", () => setSel([]));
+  document.addEventListener("input", (e) => {
+    if (!e.target.classList || !e.target.classList.contains("tabfilter")) return;
+    const v = e.target.value.trim().toLowerCase();
+    e.target.dataset.filter.split(",").forEach((id) => [...$(id).children].forEach((ch) => (ch.hidden = !!v && !ch.textContent.toLowerCase().includes(v))));
+  });
+
   function toggle(i) { setSel(sel.includes(i) ? sel.filter((x) => x !== i) : sel.concat(i)); }
   function setSel(list) {
     sel = list.filter((i) => i !== undefined);
-    try { history.replaceState(null, "", sel.length ? "#n=" + encodeURIComponent(sel.map((i) => notes[i]).join(",")) : location.pathname + location.search); } catch (e) {}
-    render();
+    if (!sel.length) lookupOpen = lookupOpen && false;
+    fo.shown = 15;
+    render(); writeHash();
+  }
+  function openLookup() {
+    setSel([]); lookupOpen = true; vis(); renderPanel(true);
+    if (mobile()) $("panel").classList.add("open");
+    setTimeout(() => { const f = $("fq"); if (f) f.focus(); }, 50);
+  }
+  function goHouse(brand) {
+    setSel([]); lookupOpen = true; fo.q = brand; fo.gender = "all"; vis();
+    show("explore", true); renderPanel(true);
+    if (mobile()) $("panel").classList.add("open");
   }
 
-  /* ---------- find ---------- */
+  /* ---------- find a note ---------- */
   const q = $("q");
   function find() {
     const v = q.value.trim().toLowerCase();
@@ -116,17 +174,22 @@
     if (e.key === "Escape") { q.value = ""; find(); }
   });
 
-  /* ---------- panel + relight ---------- */
+  /* ---------- family spotlight ---------- */
+  $("fams").innerHTML = D.families.map((f, fi) => `<button class="fpill" data-fam="${fi}" style="--p:${FP[fi][0]};--m:${FP[fi][1]};--d:${FP[fi][2]}">${esc(f)}</button>`).join("");
+  function applySolo() {
+    board.classList.toggle("solo", solo !== null);
+    board.querySelectorAll(".fam").forEach((el) => el.classList.toggle("on", +el.dataset.f === solo));
+    $("fams").querySelectorAll(".fpill").forEach((el) => el.classList.toggle("on", +el.dataset.fam === solo));
+  }
+
+  /* ---------- relight + panel ---------- */
   function render() {
-    const panel = $("panel");
-    document.body.classList.toggle("has-sel", sel.length > 0);
+    vis();
     $("clear").hidden = !sel.length;
+    board.classList.toggle("rel", sel.length > 0);
     tiles.forEach((t) => { t.classList.remove("sel", "cold"); t.style.removeProperty("--s"); t.querySelector(".lf").textContent = ""; });
-    if (!sel.length) {
-      ctx = null; panel.classList.remove("open");
-      panel.innerHTML = `<p class="empty">Nothing selected yet.<span>Tap any tile. The table relights, and this box fills with the notes that go with it and the fragrances that fit.</span></p>`;
-      return;
-    }
+    if (!sel.length) { ctx = null; $("panel").classList.remove("open"); renderPanel(true); return; }
+
     const match = [];
     for (let k = 0; k < N; k++) { let ok = 1; for (const i of sel) if (!has[i][k]) { ok = 0; break; } if (ok) match.push(k); }
     const M = match.length;
@@ -139,21 +202,29 @@
       const share = M ? cnt[i] / M : 0, base = F[i] / N;
       cand.push({ i, c: cnt[i], share, lift: share / base, exp: M * base });
     }
+
+    // colour = how strongly a note pairs *relative to the other notes for this selection*
+    const ls = cand.filter((d) => d.c >= 3).map((d) => d.lift).sort((a, b) => a - b);
+    const at = (p) => (ls.length ? ls[Math.min(ls.length - 1, Math.floor(p * (ls.length - 1)))] : 1);
+    const lo = Math.max(1, at(0.5)), hi = Math.max(at(0.93), lo + 0.4);
     sel.forEach((i) => tileOf.get(i).classList.add("sel"));
     cand.forEach((d) => {
       const t = tileOf.get(d.i);
-      if (!M || d.c === 0 || d.lift < 0.8) { t.classList.add("cold"); return; }
-      t.style.setProperty("--s", Math.max(0, Math.min(1, (d.lift - 1.05) / 1.0)).toFixed(2));
-      if (d.c >= 5 && d.lift >= 1.3) t.querySelector(".lf").textContent = times(d.lift);
+      const s = !M || d.c < 3 ? 0 : Math.max(0, Math.min(1, (d.lift - lo) / (hi - lo)));
+      t.style.setProperty("--s", s.toFixed(2));
+      if (!M || d.c === 0) t.classList.add("cold");
+      if (s >= 0.35 && d.c >= 5) t.querySelector(".lf").textContent = times(d.lift);
     });
-    ctx = { M, cand, sizeSum, match };
-    fo.shown = 15;
-    renderPanel(true);
+    d_ctx(M, cand, sizeSum, match);
   }
+  function d_ctx(M, cand, sizeSum, match) { ctx = { M, cand, sizeSum, match }; renderPanel(true); }
 
+  function emptyHTML() {
+    return `<div class="phead"><p class="empty-t">Look up a perfume</p><p class="hint">Search by name or brand, or tap a note in the table.</p></div><div class="pbody">${fragsHTML()}</div>`;
+  }
   function renderPanel(top) {
     const panel = $("panel");
-    if (!ctx) return;
+    if (!ctx) { panel.innerHTML = emptyHTML(); renderFrags(); if (top) panel.scrollTop = 0; return; }
     const { M, sizeSum } = ctx;
     let h = `<div class="phead"><div class="sels">${sel.map((i) => chip(i, `data-tog="${i}"`)).join("")}</div>` +
       `<p class="count"><b>${fmt(M)}</b>of ${fmt(N)} perfumes (${pct(M / N)}) contain ${sel.length > 1 ? "all of these" : "this note"}.` +
@@ -187,26 +258,28 @@
     return h;
   }
 
+  /* ---------- fragrance finder ---------- */
   function fragsHTML() {
     const seg = (key, opts) => `<div class="seg">` + opts.map(([v, l]) => `<button data-fo="${key}:${v}" class="${fo[key] === v ? "on" : ""}">${l}</button>`).join("") + "</div>";
-    return `<div class="fctl"><input id="fq" type="search" placeholder="Filter by name or brand" value="${esc(fo.q)}" autocomplete="off" spellcheck="false">` +
+    return `<div class="fctl"><input id="fq" type="search" placeholder="${sel.length ? "Filter by name or brand" : "Name or brand, e.g. Guerlain"}" value="${esc(fo.q)}" autocomplete="off" spellcheck="false">` +
       seg("gender", [["all", "All"], ["0", "Men’s"], ["1", "Women’s"], ["2", "Unisex"]]) +
       `<label class="sort">Sort <select id="fsort">` +
       [["clean", "Simplest first"], ["new", "Newest first"], ["rich", "Most complex first"]].map(([v, l]) => `<option value="${v}"${fo.sort === v ? " selected" : ""}>${l}</option>`).join("") + `</select></label>` +
       (sel.length >= 2 ? `<label class="chk"><input type="checkbox" id="fnear"${fo.near || ctx.M === 0 ? " checked" : ""}${ctx.M === 0 ? " disabled" : ""}> Include perfumes missing one note</label>` : "") +
-      `</div><p class="hint" id="fcount"></p><ul class="flist" id="fraglist"></ul><button class="more" id="fmore" data-more hidden></button>`;
+      `</div><p class="hint fline"><span id="fcount"></span><button class="linkish" data-csv>Download CSV</button></p><ul class="flist" id="fraglist"></ul><button class="more" id="fmore" data-more hidden></button>`;
   }
 
-  function renderFrags() {
-    const need = sel.length, near = (fo.near || ctx.M === 0) && need >= 2;
-    const q = fo.q.trim().toLowerCase();
+  function runFrags() {
+    const need = sel.length, near = (fo.near || (ctx && ctx.M === 0)) && need >= 2;
+    const qq = fo.q.trim().toLowerCase();
+    if (need === 0 && qq.length < 2) return null;
     const out = [];
     for (let k = 0; k < N; k++) {
       let sc = 0; for (const i of sel) sc += has[i][k];
-      if (!sc || sc < (near ? need - 1 : need)) continue;
+      if (need && (!sc || sc < (near ? need - 1 : need))) continue;
       const p = P[k];
       if (fo.gender !== "all" && String(p[3]) !== fo.gender) continue;
-      if (q && !(p[0] + " " + p[1]).toLowerCase().includes(q)) continue;
+      if (qq && !(p[0] + " " + p[1]).toLowerCase().includes(qq)) continue;
       out.push({ k, sc });
     }
     const len = (o) => P[o.k][4].length;
@@ -216,11 +289,22 @@
       rich: (a, b) => b.sc - a.sc || len(b) - len(a) || P[b.k][2] - P[a.k][2],
     };
     out.sort(by[fo.sort]);
+    return { out, near };
+  }
+
+  function renderFrags() {
+    const res = runFrags();
+    if (!res) {
+      lastOut = [];
+      $("fcount").textContent = "Type at least two letters of a name or brand.";
+      $("fraglist").innerHTML = ""; $("fmore").hidden = true; return;
+    }
+    const { out, near } = res; lastOut = out;
     const selSet = new Set(sel);
     $("fcount").textContent = out.length
       ? `${fmt(out.length)} ${out.length === 1 ? "fragrance" : "fragrances"}${near ? " (some are missing one note)" : ""}`
       : "Nothing matches. Loosen a filter or remove a note.";
-    $("fraglist").innerHTML = out.slice(0, fo.shown).map(({ k, sc }) => {
+    $("fraglist").innerHTML = out.slice(0, fo.shown).map(({ k }) => {
       const [name, brand, year, g, ids] = P[k];
       const mine = ids.filter((i) => selSet.has(i)), rest = ids.filter((i) => !selSet.has(i));
       const missing = sel.filter((i) => !ids.includes(i)).map((i) => notes[i]);
@@ -229,25 +313,70 @@
         `<div class="fn">${mine.map((i) => `<span class="n hit" style="${fs(i)}">${esc(notes[i])}</span>`).join("")}` +
         rest.slice(0, 9).map((i) => `<span class="n">${esc(notes[i])}</span>`).join("") +
         (rest.length > 9 ? `<span class="n more">+${rest.length - 9}</span>` : "") + `</div>` +
-        `<a class="fl" target="_blank" rel="noopener" href="https://duckduckgo.com/?q=${encodeURIComponent(name + " " + brand + " perfume")}">Look it up</a></li>`;
+        `<div class="facts"><button class="linkish" data-sim="${k}">Find similar</button>` +
+        `<a class="fl" target="_blank" rel="noopener" href="https://duckduckgo.com/?q=${encodeURIComponent(name + " " + brand + " perfume")}">Look it up</a></div>` +
+        `<div class="sim" id="sim-${k}" hidden></div></li>`;
     }).join("");
     const more = $("fmore");
     more.hidden = out.length <= fo.shown;
     more.textContent = `Show ${Math.min(15, out.length - fo.shown)} more`;
   }
 
-  /* ---------- insight sections ---------- */
-  const pairHTML = (names, big, meta, between) =>
-    `<div class="pair"><div class="c">${chipSet(names).join(between || '<span class="x">+</span>')}</div><div class="n">${big}</div><div class="m">${meta}</div></div>`;
-  $("t-surprising").innerHTML = D.surprising.slice(0, 16).map((d) => pairHTML([d.a, d.b], times(d.lift), fmt(d.n) + " perfumes")).join("");
-  $("t-swap").innerHTML = D.understudies.slice(0, 14).map((d) =>
-    pairHTML([d.a, d.b], Math.round(d.sim * 100) + "%", `together ${times(d.lift)} as often as chance`, '<span class="x">~</span>')).join("");
-  $("t-avoid").innerHTML = D.avoid.slice(0, 16).map((d) =>
-    pairHTML([d.a, d.b], fmt(d.n), `seen · ${fmt(d.expected)} expected`, '<span class="x">&times;</span>')).join("");
+  // most similar perfumes by note-list overlap (Jaccard)
+  function simHTML(k) {
+    const mine = new Uint8Array(notes.length);
+    P[k][4].forEach((i) => (mine[i] = 1));
+    const lk = P[k][4].length, scored = [];
+    for (let j = 0; j < N; j++) {
+      if (j === k) continue;
+      const ids = P[j][4]; let inter = 0;
+      for (const i of ids) inter += mine[i];
+      if (!inter) continue;
+      const score = inter / (lk + ids.length - inter);
+      if (score < 0.2) continue;
+      if (P[j][0] === P[k][0] && P[j][1] === P[k][1]) continue;
+      scored.push({ j, score, inter });
+    }
+    scored.sort((a, b) => b.score - a.score || P[b.j][2] - P[a.j][2]);
+    if (!scored.length) return `<p class="hint">Nothing with a similar note list.</p>`;
+    return `<p class="hint">Closest by shared notes. Coloured notes are shared with this one.</p><ul class="simlist">` +
+      scored.slice(0, 8).map(({ j, score, inter }) => {
+        const ids = P[j][4];
+        return `<li><div><b>${esc(P[j][0])}</b> <span>${esc(P[j][1])}</span> <em>${Math.round(score * 100)}% match</em></div>` +
+          `<div class="fn">${ids.slice().sort((a, b) => mine[b] - mine[a]).slice(0, 10).map((i) => mine[i] ? `<span class="n hit" style="${fs(i)}">${esc(notes[i])}</span>` : `<span class="n">${esc(notes[i])}</span>`).join("")}${ids.length > 10 ? `<span class="n more">+${ids.length - 10}</span>` : ""}</div></li>`;
+      }).join("") + "</ul>";
+  }
+  function toggleSim(k, btn) {
+    const box = $("sim-" + k);
+    if (box.hidden) { if (!box.innerHTML) box.innerHTML = simHTML(k); box.hidden = false; btn.textContent = "Hide similar"; }
+    else { box.hidden = true; btn.textContent = "Find similar"; }
+  }
 
-  const rowTrio = (d) => `<div class="row"><div class="grow">${chipSet(d.notes).join(" ")}</div><span class="m">${fmt(d.n)}</span><span class="v">${times(d.lift)}</span></div>`;
-  $("t-trios").innerHTML = D.trios.slice(0, 14).map(rowTrio).join("");
-  $("t-common").innerHTML = D.trios_common.slice(0, 14).map(rowTrio).join("");
+  function downloadCsv() {
+    if (!lastOut.length) return;
+    const rows = [["name", "brand", "year", "audience", "note_count", "notes"]];
+    lastOut.forEach(({ k }) => { const p = P[k]; rows.push([p[0], p[1], p[2] || "", GL[p[3]], p[4].length, p[4].map((i) => notes[i]).join("; ")]); });
+    const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = "fragrances" + (sel.length ? "-" + sel.map((i) => notes[i].toLowerCase().replace(/\W+/g, "")).join("-") : "") + ".csv";
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  /* ---------- the other tabs ---------- */
+  const act = (names, label) => `<button class="act" data-set="${esc(names.join("|"))}" data-go="frags">${label}</button>`;
+  const pairHTML = (names, big, meta, between, label) =>
+    `<div class="pair"><div class="c">${chips(names, between || '<span class="x">+</span>')}</div><div class="n">${big}</div>` +
+    (label ? act(names, label) : "<span></span>") + `<div class="m">${meta}</div></div>`;
+  $("t-surprising").innerHTML = D.surprising.map((d) => pairHTML([d.a, d.b], times(d.lift), fmt(d.n) + " perfumes", null, "Find fragrances")).join("");
+  $("t-swap").innerHTML = D.understudies.map((d) =>
+    pairHTML([d.a, d.b], Math.round(d.sim * 100) + "%", `together ${times(d.lift)} as often as chance`, '<span class="x">~</span>')).join("");
+  $("t-avoid").innerHTML = D.avoid.map((d) =>
+    pairHTML([d.a, d.b], fmt(d.n), `seen · ${fmt(d.expected)} expected`, '<span class="x">&times;</span>', "Closest fragrances")).join("");
+
+  const rowTrio = (d) => `<div class="row"><div class="grow">${chips(d.notes)}</div><span class="m">${fmt(d.n)}</span><span class="v">${times(d.lift)}</span>${act(d.notes, "Fragrances")}</div>`;
+  $("t-trios").innerHTML = D.trios.map(rowTrio).join("");
+  $("t-common").innerHTML = D.trios_common.map(rowTrio).join("");
 
   const bars = (d) => {
     const mx = Math.max(...d.share);
@@ -257,14 +386,16 @@
   const byDelta = D.time.slice().sort((a, b) => b.delta - a.delta);
   $("t-rise").innerHTML = byDelta.slice(0, 12).map(timeRow).join("");
   $("t-fall").innerHTML = byDelta.slice(-12).reverse().map(timeRow).join("");
+  const pRow = (d) => `<div class="row"><div class="grow">${chips([d.a, d.b])}</div><span class="m">was ${pct(d.early)}</span><span class="v">${pct(d.late)}</span>${act([d.a, d.b], "Fragrances")}</div>`;
+  $("t-prise").innerHTML = D.rising_pairs.slice(0, 12).map(pRow).join("");
+  $("t-pfall").innerHTML = D.falling_pairs.slice(0, 12).map(pRow).join("");
 
-  const pRow = (d) => `<div class="row"><div class="grow">${chipSet([d.a, d.b]).join('<span class="x"> + </span>')}</div><span class="m">was ${pct(d.early)}</span><span class="v">${pct(d.late)}</span></div>`;
-  $("t-prise").innerHTML = D.rising_pairs.slice(0, 10).map(pRow).join("");
-  $("t-pfall").innerHTML = D.falling_pairs.slice(0, 10).map(pRow).join("");
-
-  $("t-houses").innerHTML = D.house.slice(0, 24).map((b) =>
-    `<div class="house"><div class="hn">${esc(b.brand.replace(/'S\b/g, "'s"))}</div><div class="hm">${fmt(b.n)} perfumes · ${b.mean} notes each on average</div><div class="hc">` +
-    b.top.map((t) => `<button class="chip" data-set="${esc(t.note)}" style="${fs(ix.get(t.note))}">${esc(t.note)}<i>${times(t.lift)}</i></button>`).join("") + "</div></div>").join("");
+  $("t-houses").innerHTML = D.house.map((b) => {
+    const nm = b.brand.replace(/'S\b/g, "'s");
+    return `<div class="house"><div class="hn">${esc(nm)}</div><div class="hm">${fmt(b.n)} perfumes · ${b.mean} notes each on average</div><div class="hc">` +
+      b.top.map((t) => `<button class="chip" data-set="${esc(t.note)}" style="${fs(ix.get(t.note))}">${esc(t.note)}<i>${times(t.lift)}</i></button>`).join("") +
+      `</div><button class="act" data-house="${esc(b.brand)}">Browse their fragrances</button></div>`;
+  }).join("");
 
   const sizeRow = (d) => `<div class="row">${chip(ix.get(d.note))}<span class="grow"></span><span class="m">${fmt(d.n)} perfumes</span><span class="v">${d.mean}</span></div>`;
   $("t-small").innerHTML = D.size.small.map(sizeRow).join("");
@@ -277,24 +408,11 @@
   $("t-men").innerHTML = byLean.slice(0, 12).map(gRow).join("");
   $("t-women").innerHTML = byLean.slice(-12).reverse().map(gRow).join("");
 
-  /* ---------- family legend / spotlight ---------- */
-  let solo = null;
-  $("fams").innerHTML = D.families.map((f, fi) => `<button class="fpill" data-fam="${fi}" style="--p:${FP[fi][0]};--m:${FP[fi][1]};--d:${FP[fi][2]}">${esc(f)}</button>`).join("");
-  function applySolo() {
-    board.classList.toggle("solo", solo !== null);
-    board.querySelectorAll(".fam").forEach((el) => el.classList.toggle("on", +el.dataset.f === solo));
-    $("fams").querySelectorAll(".fpill").forEach((el) => el.classList.toggle("on", +el.dataset.fam === solo));
-  }
-  document.addEventListener("click", (e) => {
-    const f = e.target.closest("[data-fam]");
-    if (!f) return;
-    const v = +f.dataset.fam;
-    solo = solo === v ? null : v;
-    applySolo();
-  });
-
   /* ---------- boot ---------- */
   $("try").innerHTML = "<span>Try</span>" + ["Oud", "Vanilla", "Iris", "Vetiver", "Rose", "Tonka Bean"].map((n) => chip(ix.get(n))).join("");
-  const m = /[#&]n=([^&]*)/.exec(location.hash);
-  setSel(m ? decodeURIComponent(m[1]).split(",").map((n) => ix.get(n)) : []);
+  const hp = new URLSearchParams(location.hash.slice(1));
+  tab = hp.get("t") === "frags" ? "frags" : "pairs";
+  const names0 = (hp.get("n") || "").split(",").map((n) => ix.get(n)).filter((i) => i !== undefined);
+  show(hp.get("v") || "explore", false);
+  setSel(names0);
 })();

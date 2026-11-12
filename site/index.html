@@ -4,70 +4,85 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>What Goes With What</title>
-<meta name="description" content="A periodic table of perfume notes. Tap one and see what it pairs with across 26,000 formulas.">
+<meta name="description" content="A periodic table of perfume notes. Tap one and see what it pairs with across 26,000 formulas, then find fragrances that fit.">
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body data-view="explore">
 
 <header class="top">
   <div class="top-in">
-    <h1>What goes<br>with what</h1>
-    <p class="dek"><b id="n-notes">153</b> perfume notes, wired together by <b id="n-perf">26,296</b> formulas. See what pairs, what never does, and what could stand in for what.</p>
-
-
-    <nav class="jump" aria-label="Sections">
-      <a href="#table">Table</a><a href="#odd">Odd couples</a><a href="#swap">Stand-ins</a><a href="#trios">Trios</a><a href="#avoid">Never together</a><a href="#change">Changing</a><a href="#houses">Houses</a><a href="#size">Formula size</a><a href="#gender">His / hers</a><a href="#method">Method</a>
-    </nav>
+    <h1>What goes with what</h1>
+    <p class="dek"><b id="n-notes">153</b> perfume notes, wired together by <b id="n-perf">26,296</b> formulas. See what pairs, what never does, what could stand in for what, and which fragrances fit.</p>
   </div>
 </header>
 
-<div class="howbar"><div class="inner">
-<ol class="how">
-      <li><b>Tap a note.</b> Every note is a tile, grouped by family.</li>
-      <li><b>Watch the table relight.</b> <span class="sw hot"></span>Tinted tiles pair with it more than chance, and the small number says how many times more. <span class="sw cold"></span>Pale ones keep away.</li>
-      <li><b>Stack notes, then find fragrances.</b> Tap a second or third note to narrow it down, then open the <i>Fragrances</i> tab for real perfumes built around them. <span class="desk">It sits on the right.</span><span class="mob">It sits in the bar at the bottom.</span></li>
-    </ol>
-</div></div>
+<nav class="tabbar" id="tabbar" aria-label="Views">
+  <div class="tabbar-in" role="tablist">
+    <button class="vt on" role="tab" data-view="explore">Explore</button>
+    <button class="vt" role="tab" data-view="odd">Odd couples</button>
+    <button class="vt" role="tab" data-view="swap">Stand-ins</button>
+    <button class="vt" role="tab" data-view="trios">Trios</button>
+    <button class="vt" role="tab" data-view="avoid">Never together</button>
+    <button class="vt" role="tab" data-view="trends">Trends</button>
+    <button class="vt" role="tab" data-view="houses">Houses</button>
+    <button class="vt" role="tab" data-view="formulas">Formula size</button>
+    <button class="vt" role="tab" data-view="gender">His &amp; hers</button>
+    <button class="vt" role="tab" data-view="about">About</button>
+  </div>
+</nav>
 
 <main>
 
-<section class="lab" id="table">
-  <div class="inner">
-    <div class="finder">
-      <label for="q">Find a note</label>
-      <input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="e.g. oud">
-      <button id="clear" class="linkish" hidden>Clear selection</button>
-      <div class="try" id="try"></div>
-      <div class="fams" id="fams" aria-label="Note families"></div>
-    </div>
-    <div class="lab-grid">
-      <div id="board" class="board"></div>
-      <aside id="panel" class="panel" aria-live="polite"></aside>
-    </div>
-  </div>
-</section>
+<div class="pane" id="v-explore" data-view="explore">
+  <div class="howbar"><div class="inner">
+    <ol class="how">
+      <li><b>Tap a note.</b> Every note is a tile, grouped by family.</li>
+      <li><b>Watch the table relight.</b> <span class="sw hot"></span>Coloured tiles pair with it. <span class="sw cold"></span>Gray ones don’t. The small number is how many times more often than chance.</li>
+      <li><b>Stack notes, then find fragrances.</b> Tap a second or third note to narrow it down, then open the <i>Fragrances</i> tab for real perfumes built around them. <span class="desk">It sits on the right.</span><span class="mob">It sits in the bar at the bottom.</span></li>
+    </ol>
+  </div></div>
 
-<section id="odd">
+  <section class="lab" id="table">
+    <div class="inner">
+      <div class="finder">
+        <label for="q">Find a note</label>
+        <input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="e.g. oud">
+        <button id="lookup" class="linkish">Look up a perfume instead</button>
+        <button id="clear" class="linkish" hidden>Clear selection</button>
+        <div class="try" id="try"></div>
+        <div class="fams" id="fams" aria-label="Note families"></div>
+      </div>
+      <div class="lab-grid">
+        <div id="board" class="board"></div>
+        <aside id="panel" class="panel" aria-live="polite"></aside>
+      </div>
+    </div>
+  </section>
+</div>
+
+<section class="pane" id="v-odd" data-view="odd" hidden>
   <div class="inner">
     <h2>Odd couples</h2>
-    <p class="intro">Pairs that turn up together far more than their popularity predicts. Usually the two share a facet: both resins, both roasted, both green and bitter.</p>
+    <p class="intro">Pairs that turn up together far more than their popularity predicts. Usually the two share a facet: both resins, both roasted, both green and bitter. Tap a note to see it in the table, or “Find fragrances” to see perfumes that combine them.</p>
+    <input class="tabfilter" data-filter="t-surprising" type="search" placeholder="Filter by note, e.g. rose" autocomplete="off">
     <div class="pairs" id="t-surprising"></div>
   </div>
 </section>
 
-<section id="swap">
+<section class="pane" id="v-swap" data-view="swap" hidden>
   <div class="inner">
     <h2>Stand-ins</h2>
-    <p class="intro">Notes that keep the same company but rarely keep each other’s. They fill the same slot in a formula, so one can often cover for the other when you’re out of stock, over budget or restricted. The score is how alike their partner lists are.</p>
+    <p class="intro">Notes that keep the same company but rarely keep each other’s. They fill the same slot in a formula, so one can often cover for the other when you’re out of stock, over budget or restricted. The score is how alike their partner lists are. Select any single note in Explore to get its own list of stand-ins.</p>
+    <input class="tabfilter" data-filter="t-swap" type="search" placeholder="Filter by note, e.g. lily" autocomplete="off">
     <div class="pairs light" id="t-swap"></div>
-    <p class="small">Select any single note in the table to get its own list of stand-ins.</p>
   </div>
 </section>
 
-<section id="trios">
+<section class="pane" id="v-trios" data-view="trios" hidden>
   <div class="inner">
     <h2>Three-note signatures</h2>
     <p class="intro">The left column is the tightest trios, combinations that read as a single idea. The right is what you’ll actually meet most often, which is mostly musk and jasmine plus whoever is nearby.</p>
+    <input class="tabfilter" data-filter="t-trios,t-common" type="search" placeholder="Filter by note, e.g. oud" autocomplete="off">
     <div class="two">
       <div><h3>Tightest</h3><div class="stack" id="t-trios"></div></div>
       <div><h3>Most common</h3><div class="stack" id="t-common"></div></div>
@@ -75,18 +90,19 @@
   </div>
 </section>
 
-<section id="avoid">
+<section class="pane" id="v-avoid" data-view="avoid" hidden>
   <div class="inner">
     <h2>Never in the same room</h2>
-    <p class="intro">Well-used notes that almost never meet. Each row shows how many perfumes contain both, against how many you’d expect if notes were picked at random. Open ground, or a good reason to stay away.</p>
+    <p class="intro">Well-used notes that almost never meet. Each row shows how many perfumes contain both, against how many you’d expect if notes were picked at random. Open ground, or a good reason to stay away. “Closest fragrances” shows the nearest things that do exist.</p>
+    <input class="tabfilter" data-filter="t-avoid" type="search" placeholder="Filter by note, e.g. lychee" autocomplete="off">
     <div class="pairs light" id="t-avoid"></div>
   </div>
 </section>
 
-<section id="change">
+<section class="pane" id="v-trends" data-view="trends" hidden>
   <div class="inner">
     <h2>What’s changing</h2>
-    <p class="intro">Share of perfumes containing each note, across five periods from before 2005 to 2020 on (the teal bar is the latest). Three quarters of the perfumes here are from 2015 or later, so the earliest bars rest on fewer formulas.</p>
+    <p class="intro">Share of perfumes containing each note, across five periods from before 2005 to 2020 on (the last bar is the latest). Three quarters of the perfumes here are from 2015 or later, so the earliest bars rest on fewer formulas.</p>
     <div class="two">
       <div><h3>Notes gaining ground</h3><div class="stack" id="t-rise"></div></div>
       <div><h3>Notes losing ground</h3><div class="stack" id="t-fall"></div></div>
@@ -98,18 +114,19 @@
   </div>
 </section>
 
-<section id="houses">
+<section class="pane" id="v-houses" data-view="houses" hidden>
   <div class="inner">
     <h2>House styles</h2>
-    <p class="intro">The notes each big house leans on far more than the market as a whole, with the multiple against the overall average. Tap a note to see it in the table.</p>
+    <p class="intro">The notes each big house leans on far more than the market as a whole, with the multiple against the overall average. Tap a note to see it in the table, or browse the house’s own fragrances.</p>
+    <input class="tabfilter" data-filter="t-houses" type="search" placeholder="Filter by house or note" autocomplete="off">
     <div class="houses" id="t-houses"></div>
   </div>
 </section>
 
-<section id="size">
+<section class="pane" id="v-formulas" data-view="formulas" hidden>
   <div class="inner">
     <h2>Solo acts and ensembles</h2>
-    <p class="intro">The average perfume here lists <b id="avg-size">8</b> notes. Some notes tend to carry a formula on their own, others show up in crowded ones. Average number of notes in the perfumes that contain each.</p>
+    <p class="intro">The average perfume here lists <b id="avg-size">8</b> notes. Some notes tend to carry a formula on their own, others show up in crowded ones. Average number of notes in the perfumes that contain each. Useful when deciding whether a note wants company.</p>
     <div class="two">
       <div><h3>Solo acts</h3><div class="stack" id="t-small"></div></div>
       <div><h3>Ensemble players</h3><div class="stack" id="t-large"></div></div>
@@ -117,7 +134,7 @@
   </div>
 </section>
 
-<section id="gender">
+<section class="pane" id="v-gender" data-view="gender" hidden>
   <div class="inner">
     <h2>His, hers, and the notes in between</h2>
     <p class="intro">Share of men’s-marketed and women’s-marketed perfumes that contain each note. Those are shelf categories, not facts about noses, but the split is stark.</p>
@@ -129,13 +146,14 @@
   </div>
 </section>
 
-<section id="method">
+<section class="pane" id="v-about" data-view="about" hidden>
   <div class="inner">
     <h2>How this was made</h2>
     <div class="three small">
       <p><b>Lift</b> is how many times more often two notes appear together than if each were scattered independently. 1× is chance, 3× is three times as often. With several notes selected, it compares a note’s share among matching perfumes with its share overall.</p>
+      <p><b>Colours on the table.</b> After you select a note, each tile is coloured by how strongly it pairs <i>relative to the other notes for that selection</i>. A note found in big, busy formulas inflates everything a little, so the scale is centred on the typical partner and only the standouts light up. The small number on a tile is the raw lift.</p>
       <p><b>Cleaning.</b> 394 raw labels were merged into 153. Origins were dropped (<i>Jasmine (Egypt)</i> becomes Jasmine), aroma-chemicals folded into the note they imitate (<i>Galaxolide (Musk)</i> becomes Musk), and synonyms joined. Families are hand-assigned.</p>
-      <p><b>Stand-ins</b> compare each note’s lift against every other note, centred so that only distinctive preferences count, then take the cosine similarity. They are suggestions from usage data, not a statement about odour or chemistry.</p>
+      <p><b>Stand-ins</b> compare each note’s lift against every other note, centred so that only distinctive preferences count, then take the cosine similarity. They are suggestions from usage data, not a statement about odour or chemistry. <b>Similar fragrances</b> uses the overlap of note lists (Jaccard).</p>
       <p><b>Source.</b> The open <i>doevent/perfume</i> dataset, a 2024 snapshot, not a direct Fragrantica export. Note lists are flat, with no top, heart or base. Mass-market ranges are heavily represented, so “common” leans clean, sweet and musky. Tables ignore anything under about 40 perfumes.</p>
     </div>
   </div>
