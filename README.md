@@ -24,7 +24,7 @@ Clustering: 12 hand-curated families plus data-driven Louvain communities on pos
 Deploy on Vercel with Root Directory `site`, Framework "Other", no build command.
 
 A periodic table of notes: tap a tile and the table relights by lift, with a side panel (a bottom sheet on phones)
-listing partners, stand-ins and example perfumes. Below it: odd couples, stand-ins (notes with similar partner
+with a Pairings tab (partners, stand-ins) and a Fragrances tab (real perfumes containing your notes, filterable by gender and name, with near-matches when nothing has every note). On phones notes become readable name chips. Below it: odd couples, stand-ins (notes with similar partner
 profiles that rarely appear together), trios, pairs that never meet, notes and pairings rising or fading,
 house styles, formula size, and men's/women's lean.
 

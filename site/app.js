@@ -51,12 +51,32 @@
   const chip = (i, attr) => `<button class="chip" ${attr || `data-set="${esc(notes[i])}"`}>${esc(notes[i])}</button>`;
   const chipSet = (names) => names.map((n) => chip(ix.get(n), `data-set="${esc(names.join("|"))}"`));
 
+  let tab = "pairs", ctx = null;
+  const fo = { gender: "all", sort: "clean", near: false, q: "", shown: 15 };
+  const GL = ["men’s", "women’s", "unisex"];
   document.addEventListener("click", (e) => {
+    const panel = $("panel");
+    if (mobile() && panel.classList.contains("open") && !e.target.closest("#panel")) panel.classList.remove("open");
+    const tb = e.target.closest("[data-tab]");
+    if (tb) {
+      const same = tab === tb.dataset.tab;
+      tab = tb.dataset.tab;
+      if (mobile()) panel.classList.toggle("open", !(same && panel.classList.contains("open")));
+      renderPanel(true); return;
+    }
+    const f = e.target.closest("[data-fo]");
+    if (f) { const [k, v] = f.dataset.fo.split(":"); fo[k] = v; fo.shown = 15; renderPanel(); return; }
+    if (e.target.closest("[data-more]")) { fo.shown += 15; renderFrags(); return; }
     const t = e.target.closest(".tile, [data-tog]");
-    if (t) { toggle(+(t.dataset.i ?? t.dataset.tog)); if (t.classList.contains("tile")) $("panel").classList.remove("open"); return; }
+    if (t) { toggle(+(t.dataset.i ?? t.dataset.tog)); if (t.classList.contains("tile")) panel.classList.remove("open"); return; }
     const s = e.target.closest("[data-set]");
     if (s) { setSel(s.dataset.set.split("|").map((n) => ix.get(n))); $("table").scrollIntoView({ behavior: "smooth" }); return; }
-    if (e.target.closest(".phead") && mobile()) $("panel").classList.toggle("open");
+    if (e.target.closest(".phead") && mobile()) panel.classList.toggle("open");
+  });
+  $("panel").addEventListener("input", (e) => { if (e.target.id === "fq") { fo.q = e.target.value; fo.shown = 15; renderFrags(); } });
+  $("panel").addEventListener("change", (e) => {
+    if (e.target.id === "fsort") { fo.sort = e.target.value; fo.shown = 15; renderFrags(); }
+    if (e.target.id === "fnear") { fo.near = e.target.checked; fo.shown = 15; renderFrags(); }
   });
   $("clear").addEventListener("click", () => setSel([]));
   function toggle(i) { setSel(sel.includes(i) ? sel.filter((x) => x !== i) : sel.concat(i)); }
@@ -86,8 +106,8 @@
     $("clear").hidden = !sel.length;
     tiles.forEach((t) => { t.classList.remove("sel", "cold"); t.style.removeProperty("--s"); t.querySelector(".lf").textContent = ""; });
     if (!sel.length) {
-      panel.classList.remove("open");
-      panel.innerHTML = `<p class="empty">Nothing selected yet.<span>Tap any tile. The table relights, and this box fills with the notes that go with it, the ones that don’t, and example perfumes.</span></p>`;
+      ctx = null; panel.classList.remove("open");
+      panel.innerHTML = `<p class="empty">Nothing selected yet.<span>Tap any tile. The table relights, and this box fills with the notes that go with it and the fragrances that fit.</span></p>`;
       return;
     }
     const match = [];
@@ -96,7 +116,6 @@
     const cnt = new Int32Array(notes.length);
     let sizeSum = 0;
     for (const k of match) { sizeSum += P[k][4].length; for (const i of P[k][4]) cnt[i]++; }
-
     const cand = [];
     for (let i = 0; i < notes.length; i++) {
       if (sel.includes(i)) continue;
@@ -110,31 +129,94 @@
       t.style.setProperty("--s", Math.max(0, Math.min(1, (d.lift - 1.05) / 1.0)).toFixed(2));
       if (d.c >= 5 && d.lift >= 1.3) t.querySelector(".lf").textContent = times(d.lift);
     });
+    ctx = { M, cand, sizeSum, match };
+    fo.shown = 15;
+    renderPanel(true);
+  }
 
+  function renderPanel(top) {
+    const panel = $("panel");
+    if (!ctx) return;
+    const { M, sizeSum } = ctx;
     let h = `<div class="phead"><div class="sels">${sel.map((i) => chip(i, `data-tog="${i}"`)).join("")}</div>` +
-      `<p class="count"><b>${fmt(M)}</b><span class="t-long">of ${fmt(N)} perfumes (${pct(M / N)}) contain ${sel.length > 1 ? "all of these" : "this note"}.</span><span class="t-short"> perfumes</span>` +
-      (M ? `<small>Average formula: ${(sizeSum / M).toFixed(1)} notes (all perfumes: ${avgAll.toFixed(1)})</small>` : "") + `</p><span class="carat"></span></div><div class="pbody">`;
-    if (!M) h += `<p class="hint">No perfume combines these. Remove one.</p>`;
-    else {
-      const often = cand.filter((d) => d.c > 0).sort((a, b) => b.share - a.share).slice(0, 7);
-      const minC = Math.max(8, Math.round(M * 0.04));
-      const distinct = cand.filter((d) => d.c >= minC && d.lift > 1.2).sort((a, b) => b.lift - a.lift).slice(0, 7);
-      const seldom = cand.filter((d) => d.exp >= Math.max(6, M * 0.03) && F[d.i] >= 250).sort((a, b) => a.lift - b.lift).slice(0, 6);
-      const list = (arr, bar, val) => arr.length
-        ? `<ul class="plist">` + arr.map((d) => `<li>${chip(d.i, `data-tog="${d.i}"`)}<span class="bar"><i style="width:${bar(d)}%"></i></span><span class="v">${val(d)}</span></li>`).join("") + "</ul>"
-        : `<p class="hint">Too few perfumes to say.</p>`;
-      h += `<h5>Most often with</h5>` + list(often, (d) => (d.share / often[0].share) * 100, (d) => pct(d.share));
-      h += `<h5>Unusually often with</h5>` + list(distinct, (d) => (d.lift / distinct[0].lift) * 100, (d) => times(d.lift));
-      h += `<h5>Hardly ever with</h5>` + list(seldom, (d) => Math.max(2, (1 - d.lift) * 100), (d) => d.c + "/" + Math.round(d.exp));
-      if (sel.length === 1 && D.similar[sel[0]].length) {
-        h += `<h5>Possible stand-ins</h5><p class="hint">Similar partners, rarely used together</p><ul class="plist">` +
-          D.similar[sel[0]].slice(0, 5).map(([j, s]) => `<li>${chip(j, `data-tog="${j}"`)}<span class="bar"><i style="width:${Math.round(s * 100)}%"></i></span><span class="v">${Math.round(s * 100)}%</span></li>`).join("") + "</ul>";
-      }
-      const ex = match.slice().sort((a, b) => P[a][4].length - P[b][4].length || P[b][2] - P[a][2]).slice(0, 12);
-      h += `<h5>Cleanest examples</h5><p class="hint">Fewest other notes, so the combo is the main event.</p><ul class="plist plain">` +
-        ex.map((k) => `<li><span class="y">${P[k][2] || ""}</span><span class="n">${esc(P[k][0])}</span><span class="b">${esc(P[k][1])}</span></li>`).join("") + "</ul>";
-    }
+      `<p class="count"><b>${fmt(M)}</b>of ${fmt(N)} perfumes (${pct(M / N)}) contain ${sel.length > 1 ? "all of these" : "this note"}.` +
+      (M ? `<small>Average formula: ${(sizeSum / M).toFixed(1)} notes (all perfumes: ${avgAll.toFixed(1)})</small>` : "") + `</p>` +
+      `<div class="tabs" role="tablist"><button class="tab${tab === "pairs" ? " on" : ""}" role="tab" data-tab="pairs">Pairings</button>` +
+      `<button class="tab${tab === "frags" ? " on" : ""}" role="tab" data-tab="frags">Fragrances <i>${fmt(M)}</i></button></div></div><div class="pbody">`;
+    h += tab === "frags" ? fragsHTML() : pairsHTML();
     panel.innerHTML = h + "</div>";
+    if (tab === "frags") renderFrags();
+    if (top) panel.scrollTop = 0;
+  }
+
+  function pairsHTML() {
+    const { M, cand } = ctx;
+    if (!M) return `<p class="hint">No perfume combines all of these. Open the Fragrances tab to see near matches, or remove a note.</p>`;
+    const often = cand.filter((d) => d.c > 0).sort((a, b) => b.share - a.share).slice(0, 7);
+    const minC = Math.max(8, Math.round(M * 0.04));
+    const distinct = cand.filter((d) => d.c >= minC && d.lift > 1.2).sort((a, b) => b.lift - a.lift).slice(0, 7);
+    const seldom = cand.filter((d) => d.exp >= Math.max(6, M * 0.03) && F[d.i] >= 250).sort((a, b) => a.lift - b.lift).slice(0, 6);
+    const list = (arr, bar, val) => arr.length
+      ? `<ul class="plist">` + arr.map((d) => `<li>${chip(d.i, `data-tog="${d.i}"`)}<span class="bar"><i style="width:${bar(d)}%"></i></span><span class="v">${val(d)}</span></li>`).join("") + "</ul>"
+      : `<p class="hint">Too few perfumes to say.</p>`;
+    let h = `<button class="cta" data-tab="frags">Find fragrances with ${sel.length > 1 ? "these notes" : "this note"} <b>${fmt(M)}</b></button>`;
+    h += `<h5>Most often with</h5><p class="hint">Tap a note to add it to your combination.</p>` + list(often, (d) => (d.share / often[0].share) * 100, (d) => pct(d.share));
+    h += `<h5>Unusually often with</h5>` + list(distinct, (d) => (d.lift / distinct[0].lift) * 100, (d) => times(d.lift));
+    h += `<h5>Hardly ever with</h5>` + list(seldom, (d) => Math.max(2, (1 - d.lift) * 100), (d) => d.c + "/" + Math.round(d.exp));
+    if (sel.length === 1 && D.similar[sel[0]].length) {
+      h += `<h5>Possible stand-ins</h5><p class="hint">Similar partners, rarely used together</p><ul class="plist">` +
+        D.similar[sel[0]].slice(0, 5).map(([j, s]) => `<li>${chip(j, `data-tog="${j}"`)}<span class="bar"><i style="width:${Math.round(s * 100)}%"></i></span><span class="v">${Math.round(s * 100)}%</span></li>`).join("") + "</ul>";
+    }
+    return h;
+  }
+
+  function fragsHTML() {
+    const seg = (key, opts) => `<div class="seg">` + opts.map(([v, l]) => `<button data-fo="${key}:${v}" class="${fo[key] === v ? "on" : ""}">${l}</button>`).join("") + "</div>";
+    return `<div class="fctl"><input id="fq" type="search" placeholder="Filter by name or brand" value="${esc(fo.q)}" autocomplete="off" spellcheck="false">` +
+      seg("gender", [["all", "All"], ["0", "Men’s"], ["1", "Women’s"], ["2", "Unisex"]]) +
+      `<label class="sort">Sort <select id="fsort">` +
+      [["clean", "Simplest first"], ["new", "Newest first"], ["rich", "Most complex first"]].map(([v, l]) => `<option value="${v}"${fo.sort === v ? " selected" : ""}>${l}</option>`).join("") + `</select></label>` +
+      (sel.length >= 2 ? `<label class="chk"><input type="checkbox" id="fnear"${fo.near || ctx.M === 0 ? " checked" : ""}${ctx.M === 0 ? " disabled" : ""}> Include perfumes missing one note</label>` : "") +
+      `</div><p class="hint" id="fcount"></p><ul class="flist" id="fraglist"></ul><button class="more" id="fmore" data-more hidden></button>`;
+  }
+
+  function renderFrags() {
+    const need = sel.length, near = (fo.near || ctx.M === 0) && need >= 2;
+    const q = fo.q.trim().toLowerCase();
+    const out = [];
+    for (let k = 0; k < N; k++) {
+      let sc = 0; for (const i of sel) sc += has[i][k];
+      if (!sc || sc < (near ? need - 1 : need)) continue;
+      const p = P[k];
+      if (fo.gender !== "all" && String(p[3]) !== fo.gender) continue;
+      if (q && !(p[0] + " " + p[1]).toLowerCase().includes(q)) continue;
+      out.push({ k, sc });
+    }
+    const len = (o) => P[o.k][4].length;
+    const by = {
+      clean: (a, b) => b.sc - a.sc || len(a) - len(b) || P[b.k][2] - P[a.k][2],
+      new: (a, b) => b.sc - a.sc || P[b.k][2] - P[a.k][2] || len(a) - len(b),
+      rich: (a, b) => b.sc - a.sc || len(b) - len(a) || P[b.k][2] - P[a.k][2],
+    };
+    out.sort(by[fo.sort]);
+    const selSet = new Set(sel);
+    $("fcount").textContent = out.length
+      ? `${fmt(out.length)} ${out.length === 1 ? "fragrance" : "fragrances"}${near ? " (some are missing one note)" : ""}`
+      : "Nothing matches. Loosen a filter or remove a note.";
+    $("fraglist").innerHTML = out.slice(0, fo.shown).map(({ k, sc }) => {
+      const [name, brand, year, g, ids] = P[k];
+      const mine = ids.filter((i) => selSet.has(i)), rest = ids.filter((i) => !selSet.has(i));
+      const missing = sel.filter((i) => !ids.includes(i)).map((i) => notes[i]);
+      return `<li class="frag"><div class="ft"><b>${esc(name)}</b> <span>${esc(brand)}</span></div>` +
+        `<div class="fm">${year || "year unknown"} · ${GL[g]} · ${ids.length} ${ids.length === 1 ? "note" : "notes"}${missing.length ? ` · <u>missing ${esc(missing.join(", "))}</u>` : ""}</div>` +
+        `<div class="fn">${mine.map((i) => `<span class="n hit">${esc(notes[i])}</span>`).join("")}` +
+        rest.slice(0, 9).map((i) => `<span class="n">${esc(notes[i])}</span>`).join("") +
+        (rest.length > 9 ? `<span class="n more">+${rest.length - 9}</span>` : "") + `</div>` +
+        `<a class="fl" target="_blank" rel="noopener" href="https://duckduckgo.com/?q=${encodeURIComponent(name + " " + brand + " perfume")}">Look it up</a></li>`;
+    }).join("");
+    const more = $("fmore");
+    more.hidden = out.length <= fo.shown;
+    more.textContent = `Show ${Math.min(15, out.length - fo.shown)} more`;
   }
 
   /* ---------- insight sections ---------- */
@@ -179,6 +261,7 @@
   $("t-women").innerHTML = byLean.slice(-12).reverse().map(gRow).join("");
 
   /* ---------- boot ---------- */
+  $("try").innerHTML = "<span>Try</span>" + ["Oud", "Vanilla", "Iris", "Vetiver", "Rose", "Tonka Bean"].map((n) => chip(ix.get(n))).join("");
   const m = /[#&]n=([^&]*)/.exec(location.hash);
   setSel(m ? decodeURIComponent(m[1]).split(",").map((n) => ix.get(n)) : []);
 })();
