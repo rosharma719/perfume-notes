@@ -334,51 +334,8 @@
   A.hooks.collection = () => { renderCollection(); collSearch(); };
   A.hooks.shop = renderShop;
 
-  /* ================================================================ buy: prices, dupes, trending */
-  const eur = (v) => (v == null ? "–" : "€" + v.toFixed(2));
-  const num = (v) => (v == null ? -1 : v);
-  const ratingOf = (k) => (k >= 0 && P[k][7] ? P[k][7] / 10 : 0);
-  const noteChips = (k) => k < 0 ? "–" : P[k][4].filter((i) => !/(Notes|Accord)$/.test(notes[i]) && notes[i] !== "Musk").slice(0, 4).map((i) => chip(i)).join("");
-  mkTable("t-prices", { sort: "m10", dir: 1, rows: D.priced, cols: [
-    { key: "name", label: "Perfume", dir: 1, val: (r) => r.name, html: (r) => `<b>${esc(r.name)}</b> <span class="sub">${esc(r.house)}</span>` },
-    { key: "tier", label: "Tier", dir: 1, m: 1, val: (r) => r.tier, html: (r) => r.tier },
-    { key: "m3", label: "3 ml", num: 1, m: 1, val: (r) => num(r.m[0]), html: (r) => eur(r.m[0]) },
-    { key: "m10", label: "10 ml", num: 1, dir: 1, val: (r) => (r.m[1] == null ? 1e9 : r.m[1]), html: (r) => eur(r.m[1]) },
-    { key: "m30", label: "30 ml", num: 1, dir: 1, val: (r) => (r.m[2] == null ? 1e9 : r.m[2]), html: (r) => eur(r.m[2]) },
-    { key: "rt", label: "Rating", num: 1, m: 1, val: (r) => ratingOf(r.k), html: (r) => (ratingOf(r.k) ? ratingOf(r.k).toFixed(1) : "–") },
-    { key: "mix", label: "Profile", m: 1, html: (r) => A.mixBar(r.k) },
-    { key: "notes", label: "Notes", m: 1, html: (r) => noteChips(r.k) },
-    { key: "go", label: "", html: (r) => r.slug ? `<a class="act" target="_blank" rel="noopener" href="https://10ml.com/perfumes/${esc(r.slug)}">10ml.com</a>` : "" }] });
-
-  const sim = (v) => (v == null ? "–" : Math.round(v * 100) + "%");
-  mkTable("t-dupes", { sort: "save", rows: D.dupes, cols: [
-    { key: "o", label: "Original", dir: 1, val: (r) => r.o.name, html: (r) => `<b>${esc(r.o.name)}</b> <span class="sub">${esc(r.o.house)}</span>` },
-    { key: "op", label: "€/ml", num: 1, m: 1, val: (r) => r.o.ppm, html: (r) => eur(r.o.ppm) },
-    { key: "d", label: "Dupe", dir: 1, val: (r) => r.d.name, html: (r) => `<b>${esc(r.d.name)}</b> <span class="sub">${esc(r.d.house)}</span>` },
-    { key: "dp", label: "€/ml", num: 1, val: (r) => r.d.ppm, html: (r) => eur(r.d.ppm) },
-    { key: "save", label: "Saving", num: 1, val: (r) => r.save, html: (r) => Math.round(r.save) + "%" },
-    { key: "sim", label: "Same notes", num: 1, m: 1, val: (r) => (r.sim == null ? -1 : r.sim), html: (r) => sim(r.sim) },
-    { key: "mix", label: "Original / dupe profile", m: 1, html: (r) => `<span class="mix2">${A.mixBar(r.o.k)}${A.mixBar(r.d.k)}</span>` }] });
-
-  const dRow = (r) => ({ ...r, ppm: r.k >= 0 && priceOf.has(r.k) ? bestPpm(priceOf.get(r.k)) : null });
-  const rk = (id, list, extra) => mkTable(id, { sort: "rank", dir: 1, rows: list.map(dRow), cols: [
-    { key: "rank", label: "#", dir: 1, val: (r) => r.rank, html: (r) => r.rank },
-    { key: "p", label: "Perfume", dir: 1, val: (r) => r.perfume, html: (r) => `<b>${esc(r.perfume)}</b> <span class="sub">${esc(r.house)}</span>` },
-    { key: "ppm", label: "From €/ml", num: 1, m: 1, val: (r) => (r.ppm == null ? 1e9 : r.ppm), dir: 1, html: (r) => eur(r.ppm) },
-    { key: "rt", label: "Rating", num: 1, m: 1, val: (r) => ratingOf(r.k), html: (r) => (ratingOf(r.k) ? ratingOf(r.k).toFixed(1) : "–") },
-    { key: "mix", label: "Profile", m: 1, html: (r) => A.mixBar(r.k) },
-    { key: "notes", label: "Notes", m: 1, html: (r) => noteChips(r.k) }] });
-  rk("t-eu", D.demand.europe);
-  rk("t-clm", D.demand.climbers);
-  rk("t-fal", D.demand.fallers);
-  mkTable("t-dh", { sort: "rank", dir: 1, rows: D.demand.houses, cols: [
-    { key: "rank", label: "#", dir: 1, val: (r) => r.rank, html: (r) => r.rank },
-    { key: "h", label: "House", dir: 1, val: (r) => r.house, html: (r) => `<b>${esc(r.house)}</b>` },
-    { key: "s", label: "Share of decant sales", num: 1, val: (r) => r.share || 0, html: (r) => (r.share != null ? r.share + "%" : "–") }] });
-  if ($("trend-period")) $("trend-period").textContent = D.demand.period || "";
-
   /* ================================================================ about: sources */
-  mkTable("t-src", { sort: "as_of", rows: D.sources, cols: [
+  mkTable("t-src", { sort: "as_of", rows: D.sources.filter((s) => !/dupe/.test(s.name)), cols: [
     { key: "name", label: "Source", dir: 1, val: (r) => r.name, html: (r) => `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.name)}</a>` },
     { key: "data", label: "Used for", html: (r) => esc(r.data) },
     { key: "license", label: "License", m: 1, val: (r) => r.license, dir: 1, html: (r) => esc(r.license) },

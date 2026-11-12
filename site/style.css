@@ -236,7 +236,6 @@ button.chip:hover{background:var(--m,var(--accent-wash))}
 
 /* ---------- colour: per-section themes ---------- */
 body[data-group="me"]{--accent:#1e6844;--accent-soft:#a9d9bf;--accent-wash:#e3f4ea}
-body[data-group="buy"]{--accent:#97580f;--accent-soft:#f0c98f;--accent-wash:#fbf0dc}
 body[data-group="styles"]{--accent:#86307a;--accent-soft:#dba6d3;--accent-wash:#f7e8f4}
 body[data-group="about"]{--accent:#4b5563;--accent-soft:#cbd0d6;--accent-wash:#eef0f2}
 .tabbar{border-bottom:2px solid var(--accent-soft)}
@@ -277,7 +276,6 @@ body[data-group="about"]{--accent:#4b5563;--accent-soft:#cbd0d6;--accent-wash:#e
 /* ---------- depth: tinted canvas, white cards ---------- */
 :root{--canvas:#e6ecf6}
 body[data-group="me"]{--canvas:#e0efe6}
-body[data-group="buy"]{--canvas:#f5e8cf}
 body[data-group="styles"]{--canvas:#f1dded}
 body[data-group="about"]{--canvas:#e7e9ec}
 body{background:var(--canvas);transition:background .5s}

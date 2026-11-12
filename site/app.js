@@ -52,7 +52,6 @@
   const GROUPS = [
     { id: "explore", label: "Explore", views: [["explore", "Explore"]] },
     { id: "me", label: "For me", views: [["taste", "Taste"], ["collection", "Collection"], ["shop", "Shop"]] },
-    { id: "buy", label: "Buy", views: [["prices", "Prices"], ["dupes", "Dupes"], ["trending", "Trending"]] },
     { id: "combos", label: "Combos", views: [["pairs", "Pairs"], ["trios", "Trios"], ["swap", "Stand-ins"], ["avoid", "Avoided"]] },
     { id: "notes", label: "Notes", views: [["trends", "Trends"], ["formulas", "Formula size"], ["audience", "Audience"]] },
     { id: "styles", label: "Styles", views: [["families", "Families"], ["regions", "Regions"], ["houses", "Houses"], ["market", "Market"]] },

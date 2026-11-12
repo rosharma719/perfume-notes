@@ -48,14 +48,13 @@ Deploy on Vercel with Root Directory `site`, Framework "Other", no build command
   (ranked suggestions that favour loved notes and gaps, avoid near-copies, and show rating, price, season). Saved in the
   browser (localStorage, persistent storage requested). Saved perfumes are re-matched when the catalog is rebuilt, and any
   that can't be matched are kept and listed. Back up with a file or a link that carries the profile to another device.
-- **Buy**: Prices (decant EUR/ml), Dupes (original vs dupe, with note overlap), Trending (what Europe buys).
 - **Insights**: Pairs, Trios, Stand-ins, Avoided, Trends, Formula size, Audience (from the original 26k sample).
 - **Styles**: Families, Regions, Houses, By year. **About**: definitions and sources.
 
 Each section has its own accent colour, and every perfume is drawn with a profile bar: the mix of its note families in the
 family colours (rarer notes weigh more, so Musk doesn't colour everything), an edge in its dominant family, and a short caption.
 
-Navigation: a sticky header (ribbon, wordmark, tabs) with six tabs (Explore, For me, Buy, Combos, Notes, Styles) plus About;
+Navigation: a sticky header (ribbon, wordmark, tabs) with five tabs (Explore, For me, Combos, Notes, Styles) plus About;
 related views within a tab are a pill switcher at the top of the page. Old `#v=...` links still work.
 
 The URL hash keeps the view and selection, so views are shareable.
