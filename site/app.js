@@ -50,19 +50,29 @@
 
   /* ---------- views + url ---------- */
   const GROUPS = [
-    { id: "explore", label: "Explore", ctx: "Tap notes to combine them, then open Fragrances", views: [["explore", "Explore"]] },
+    { id: "explore", label: "Explore", views: [["explore", "Explore"]] },
     { id: "me", label: "For me", views: [["taste", "Taste"], ["collection", "Collection"], ["shop", "Shop"]] },
     { id: "buy", label: "Buy", views: [["prices", "Prices"], ["dupes", "Dupes"], ["trending", "Trending"]] },
-    { id: "insights", label: "Insights", views: [["pairs", "Pairs"], ["trios", "Trios"], ["swap", "Stand-ins"], ["avoid", "Avoided"], ["trends", "Trends"], ["formulas", "Formula size"], ["audience", "Audience"]] },
+    { id: "combos", label: "Combos", views: [["pairs", "Pairs"], ["trios", "Trios"], ["swap", "Stand-ins"], ["avoid", "Avoided"]] },
+    { id: "notes", label: "Notes", views: [["trends", "Trends"], ["formulas", "Formula size"], ["audience", "Audience"]] },
     { id: "styles", label: "Styles", views: [["families", "Families"], ["regions", "Regions"], ["houses", "Houses"], ["market", "Market"]] },
-    { id: "about", label: "About", ctx: "Definitions, sources and data caveats", views: [["about", "About"]] },
+    { id: "about", label: "About", views: [["about", "About"]] },
   ];
   const VIEWS = GROUPS.flatMap((g) => g.views.map((v) => v[0]));
   const groupOf = (v) => GROUPS.find((g) => g.views.some((x) => x[0] === v));
   const lastIn = {};
   let view = "explore";
   const tabbar = $("tabbar"), panes = [...document.querySelectorAll(".pane")];
-  $("vtabs").innerHTML = GROUPS.map((g, gi) => g.views.map(([id, label], vi) => (vi === 0 && gi > 0 ? '<span class="vsep"></span>' : "") + `<button class="vt" role="tab" data-view="${id}">${label}</button>`).join("")).join("");
+  const chrome = $("chrome");
+  $("vtabs").innerHTML = GROUPS.filter((g) => g.id !== "about").map((g) => `<button class="vt" role="tab" data-group="${g.id}">${g.label}</button>`).join("");
+  // related views share one tab: a pill switcher at the top of each page
+  GROUPS.forEach((g) => {
+    if (g.views.length < 2) return;
+    g.views.forEach(([id]) => {
+      const inner = document.querySelector(`#v-${id} > .inner`);
+      if (inner) inner.insertAdjacentHTML("afterbegin", `<div class="vseg" role="tablist">${g.views.map(([vid, l]) => `<button class="vs${vid === id ? " on" : ""}" role="tab" data-view="${vid}">${l}</button>`).join("")}</div>`);
+    });
+  });
   function writeHash() {
     const p = [];
     if (view !== "explore") p.push("v=" + view);
@@ -70,14 +80,18 @@
     if (sel.length && tab === "frags") p.push("t=frags");
     try { history.replaceState(null, "", location.pathname + location.search + (p.length ? "#" + p.join("&") : "")); } catch (e) {}
   }
-  function syncTabH() { document.documentElement.style.setProperty("--tabh", tabbar.offsetHeight + $("ribbon").offsetHeight + "px"); }
+  function syncTabH() {
+    document.documentElement.style.setProperty("--tabh", chrome.offsetHeight + "px");
+    const bar = $("vtabs"); bar.classList.toggle("scrolls", bar.scrollWidth > bar.clientWidth + 1);
+  }
   window.addEventListener("resize", syncTabH);
   function show(v, scroll) {
     if (!VIEWS.includes(v)) v = "explore";
     view = v;
     const g = groupOf(v); lastIn[g.id] = v;
     panes.forEach((p) => (p.hidden = p.dataset.view !== v));
-    document.querySelectorAll(".vt").forEach((b) => { const on = b.dataset.view === v; b.classList.toggle("on", on); b.setAttribute("aria-selected", on); });
+    document.querySelectorAll(".vt").forEach((b) => { const on = b.dataset.group === g.id; b.classList.toggle("on", on); b.setAttribute("aria-selected", on); });
+    document.querySelector(".aboutlink").classList.toggle("on", v === "about");
     const bar = $("vtabs"), cur = bar.querySelector(".vt.on");
     if (cur) bar.scrollTo({ left: Math.max(0, cur.offsetLeft - (bar.clientWidth - cur.offsetWidth) / 2), behavior: "smooth" });
     document.body.dataset.view = v;
@@ -86,7 +100,7 @@
     writeHash(); syncTabH();
     if (APP.hooks[v]) APP.hooks[v]();
     updateRibbon();
-    if (scroll) { const top = tabbar.offsetTop - $("ribbon").offsetHeight; if (window.scrollY > top) window.scrollTo(0, top); }
+    if (scroll && window.scrollY > 0) window.scrollTo(0, 0);
   }
   const vis = () => document.body.classList.toggle("has-sel", sel.length > 0 || lookupOpen);
 
@@ -98,7 +112,8 @@
       if (!sel.length) { lookupOpen = false; vis(); }
     }
     let el;
-    if ((el = T(".vt"))) { show(el.dataset.view, true); return; }
+    if ((el = T(".vt"))) { const g = GROUPS.find((x) => x.id === el.dataset.group); show(lastIn[g.id] || g.views[0][0], true); return; }
+    if ((el = T(".vs, .aboutlink"))) { show(el.dataset.view, true); return; }
     if ((el = T("[data-sort]"))) { sortBy(...el.dataset.sort.split(":")); return; }
     if ((el = T("[data-tab]"))) {
       const same = tab === el.dataset.tab;

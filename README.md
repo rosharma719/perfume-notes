@@ -55,4 +55,7 @@ Deploy on Vercel with Root Directory `site`, Framework "Other", no build command
 Each section has its own accent colour, and every perfume is drawn with a profile bar: the mix of its note families in the
 family colours (rarer notes weigh more, so Musk doesn't colour everything), an edge in its dominant family, and a short caption.
 
+Navigation: a sticky header (ribbon, wordmark, tabs) with six tabs (Explore, For me, Buy, Combos, Notes, Styles) plus About;
+related views within a tab are a pill switcher at the top of the page. Old `#v=...` links still work.
+
 The URL hash keeps the view and selection, so views are shareable.
