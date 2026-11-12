@@ -1,6 +1,9 @@
 (function () {
   "use strict";
-  const D = window.DATA, N = D.n, notes = D.notes, F = D.freq, P = D.perfumes, FO = D.family_of;
+  const D = window.DATA, notes = D.notes, P = D.perfumes, FO = D.family_of, N = P.length;
+  const F = new Array(notes.length).fill(0);
+  P.forEach((p) => p[4].forEach((i) => F[i]++));
+  const APP = (window.APP = { hooks: {}, me: { isOwn: () => false, isDis: () => false } });
   const ix = new Map(notes.map((n, i) => [n, i]));
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -22,7 +25,7 @@
   $("n-perf").textContent = fmt(N);
   $("n-notes").textContent = notes.length;
   const avgAll = P.reduce((a, p) => a + p[4].length, 0) / N;
-  $("avg-size").textContent = avgAll.toFixed(1);
+  $("avg-size").textContent = D.size.mean.toFixed(1);
 
   const has = notes.map(() => new Uint8Array(N));
   P.forEach((p, k) => p[4].forEach((i) => (has[i][k] = 1)));
@@ -48,11 +51,11 @@
   /* ---------- views + url ---------- */
   const GROUPS = [
     { id: "explore", label: "Explore", ctx: "Tap notes to combine them, then open Fragrances", views: [["explore", "Explore"]] },
-    { id: "combos", label: "Combos", views: [["pairs", "Pairs"], ["trios", "Trios"], ["swap", "Stand-ins"], ["avoid", "Avoided"]] },
-    { id: "notes", label: "Notes", views: [["trends", "Trends"], ["formulas", "Formula size"], ["audience", "Audience"]] },
-    { id: "styles", label: "Styles", views: [["families", "Families"], ["regions", "Regions"], ["houses", "Houses"]] },
-    { id: "market", label: "Market", ctx: "Releases, audience mix and formula size by year", views: [["market", "By year"]] },
-    { id: "about", label: "About", ctx: "Definitions and data caveats", views: [["about", "About"]] },
+    { id: "me", label: "For me", views: [["taste", "Taste"], ["collection", "Collection"], ["shop", "Shop"]] },
+    { id: "buy", label: "Buy", views: [["prices", "Prices"], ["dupes", "Dupes"], ["trending", "Trending"]] },
+    { id: "insights", label: "Insights", views: [["pairs", "Pairs"], ["trios", "Trios"], ["swap", "Stand-ins"], ["avoid", "Avoided"], ["trends", "Trends"], ["formulas", "Formula size"], ["audience", "Audience"]] },
+    { id: "styles", label: "Styles", views: [["families", "Families"], ["regions", "Regions"], ["houses", "Houses"], ["market", "By year"]] },
+    { id: "about", label: "About", ctx: "Definitions, sources and data caveats", views: [["about", "About"]] },
   ];
   const VIEWS = GROUPS.flatMap((g) => g.views.map((v) => v[0]));
   const groupOf = (v) => GROUPS.find((g) => g.views.some((x) => x[0] === v));
@@ -79,6 +82,7 @@
     document.body.dataset.view = v;
     if (v !== "explore") $("panel").classList.remove("open");
     writeHash(); syncTabH();
+    if (APP.hooks[v]) APP.hooks[v]();
     if (scroll) { const top = tabbar.offsetTop; if (window.scrollY > top) window.scrollTo(0, top); }
   }
   const vis = () => document.body.classList.toggle("has-sel", sel.length > 0 || lookupOpen);
@@ -102,6 +106,8 @@
     }
     if ((el = T("[data-fo]"))) { const [k, v] = el.dataset.fo.split(":"); fo[k] = v; fo.shown = 15; renderPanel(); return; }
     if (T("[data-more]")) { fo.shown += 15; renderFrags(); return; }
+    if ((el = T("[data-own]"))) { APP.me.toggle("own", +el.dataset.own); APP.refresh(); return; }
+    if ((el = T("[data-dis]"))) { APP.me.toggle("dis", +el.dataset.dis); APP.refresh(); return; }
     if ((el = T("[data-sim]"))) { toggleSim(+el.dataset.sim, el); return; }
     if (T("[data-csv]")) { downloadCsv(); return; }
     if ((el = T("[data-copy]"))) { copyLink(el); return; }
@@ -137,6 +143,7 @@
     if (e.target.id === "fnear") { fo.near = e.target.checked; fo.shown = 15; renderFrags(); }
   });
   function applyFilter(input) {
+    if (!input.dataset.filter) return;
     const v = input.value.trim().toLowerCase();
     input.dataset.filter.split(",").forEach((id) => [...$(id).tBodies[0].rows].forEach((r) => (r.hidden = !!v && !r.textContent.toLowerCase().includes(v))));
   }
@@ -271,7 +278,7 @@
       `<div class="fsel"><label>Family <select id="ffam"><option value="all">Any</option>${D.fam_names.map((n, i) => `<option value="${i}"${fo.family === String(i) ? " selected" : ""}>${esc(n)}</option>`).join("")}</select></label>` +
       `<label>Country <select id="forg"><option value="all">Any</option>${D.org_names.map((n, i) => `<option value="${i}"${fo.origin === String(i) ? " selected" : ""}>${esc(n)}</option>`).join("")}</select></label></div>` +
       `<label class="sort">Sort <select id="fsort">` +
-      [["clean", "Simplest first"], ["new", "Newest first"], ["rich", "Most complex first"]].map(([v, l]) => `<option value="${v}"${fo.sort === v ? " selected" : ""}>${l}</option>`).join("") + `</select></label>` +
+      [["clean", "Simplest first"], ["rated", "Highest rated"], ["new", "Newest first"], ["rich", "Most complex first"]].map(([v, l]) => `<option value="${v}"${fo.sort === v ? " selected" : ""}>${l}</option>`).join("") + `</select></label>` +
       (sel.length >= 2 ? `<label class="chk"><input type="checkbox" id="fnear"${fo.near || ctx.M === 0 ? " checked" : ""}${ctx.M === 0 ? " disabled" : ""}> Include perfumes missing one note</label>` : "") +
       `</div><p class="fline"><span id="fcount"></span><span>${sel.length ? `<button class="linkish" data-copy>Copy link</button>` : ""}<button class="linkish" data-csv>CSV</button></span></p>` +
       `<ul class="flist" id="fraglist"></ul><button class="more" id="fmore" data-more hidden></button>`;
@@ -296,10 +303,48 @@
     const by = {
       clean: (a, b) => b.sc - a.sc || len(a) - len(b) || P[b.k][2] - P[a.k][2],
       new: (a, b) => b.sc - a.sc || P[b.k][2] - P[a.k][2] || len(a) - len(b),
+      rated: (a, b) => b.sc - a.sc || ratingScore(b.k) - ratingScore(a.k) || len(a) - len(b),
       rich: (a, b) => b.sc - a.sc || len(b) - len(a) || P[b.k][2] - P[a.k][2],
     };
     out.sort(by[fo.sort]);
     return { out, near };
+  }
+
+  /* ---------- fragrance cards (Explore, Shop, Collection) ---------- */
+  const priceOf = new Map(); D.priced.forEach((e) => { if (e.k >= 0) priceOf.set(e.k, e); });
+  const rankOf = new Map(); D.demand.europe.forEach((e) => { if (e.k >= 0) rankOf.set(e.k, e.rank); });
+  const bestPpm = (e) => { const v = e.m.filter((x) => x != null); return v.length ? Math.min(...v) : null; };
+  const ratingScore = (k) => (P[k][7] / 10) * Math.min(1, P[k][8] / 20);
+  const shortList = (s) => { const a = (s || "").split(";").map((x) => x.trim()).filter(Boolean); return a.length >= 4 ? "all seasons" : a.join(" · "); };
+  function factsHTML(k) {
+    const p = P[k], out = [];
+    if (p[7]) out.push(`<span class="fact" title="Parfumo rating out of 10, ${fmt(p[8])} ratings">★ ${(p[7] / 10).toFixed(1)}<i>${p[8] >= 1000 ? (p[8] / 1000).toFixed(1) + "k" : p[8]}</i></span>`);
+    const e = priceOf.get(k); if (e) out.push(`<span class="fact" title="Cheapest decant, per ml">from €${bestPpm(e).toFixed(2)}/ml</span>`);
+    if (rankOf.has(k)) out.push(`<span class="fact hot" title="Most-bought decants in Europe, Oct 2025 to Sep 2026">#${rankOf.get(k)} in Europe</span>`);
+    const m = D.meta[k];
+    if (m) { if (m[0]) out.push(`<span class="fact">${esc(shortList(m[0]))}</span>`); if (m[1]) out.push(`<span class="fact">${esc(shortList(m[1]))}</span>`); }
+    return out.length ? `<div class="facts2">${out.join("")}</div>` : "";
+  }
+  function fragItem(k, o = {}) {
+    const [name, brand, year, g, ids, fi, oi] = P[k];
+    const selSet = o.sel || new Set();
+    const pill = (i) => selSet.has(i) ? `<span class="n hit" style="${fs(i)}">${esc(notes[i])}</span>` : `<span class="n">${esc(notes[i])}</span>`;
+    const pyr = D.pyr[k];
+    let body;
+    if (pyr) body = [["Top", pyr[0]], ["Heart", pyr[1]], ["Base", pyr[2]]].filter((x) => x[1].length).map(([l, a]) => `<div class="pyr"><b>${l}</b><div class="fn">${a.map(pill).join("")}</div></div>`).join("");
+    else {
+      const mine = ids.filter((i) => selSet.has(i)), rest = ids.filter((i) => !selSet.has(i));
+      body = `<div class="fn">${mine.map(pill).join("")}${rest.slice(0, 9).map(pill).join("")}${rest.length > 9 ? `<span class="n more">+${rest.length - 9}</span>` : ""}</div>`;
+    }
+    const own = APP.me.isOwn(k), dis = APP.me.isDis(k), missing = o.missing || [];
+    return `<li class="frag" data-k="${k}"><div class="ft"><b>${esc(name)}</b> <span>${esc(brand)}</span></div>` +
+      `<div class="fm">${year || "n/a"}${g >= 0 ? " · " + GL[g] : ""}${fi >= 0 ? " · " + esc(D.fam_names[fi]) : ""}${oi >= 0 ? " · " + esc(D.org_names[oi]) : ""} · ${ids.length} ${ids.length === 1 ? "note" : "notes"}${missing.length ? ` · <u>missing ${esc(missing.join(", "))}</u>` : ""}</div>` +
+      factsHTML(k) + (o.reasons ? `<div class="why-row">${o.reasons}</div>` : "") + body +
+      `<div class="facts"><button class="linkish${own ? " on" : ""}" data-own="${k}">${own ? "Owned" : "Own"}</button>` +
+      `<button class="linkish${dis ? " on" : ""}" data-dis="${k}">${dis ? "Disliked" : "Not for me"}</button>` +
+      `<button class="linkish" data-sim="${k}">Similar</button>` +
+      `<a class="linkish" target="_blank" rel="noopener" href="https://duckduckgo.com/?q=${encodeURIComponent(name + " " + brand + " perfume")}">Search</a></div>` +
+      `<div class="sim" id="sim-${k}-${o.ctx || "x"}" hidden></div></li>`;
   }
 
   function renderFrags() {
@@ -308,19 +353,7 @@
     const { out, near } = res; lastOut = out;
     const selSet = new Set(sel);
     $("fcount").textContent = out.length ? `${fmt(out.length)} ${out.length === 1 ? "fragrance" : "fragrances"}${near ? " (some missing a note)" : ""}` : "No matches";
-    $("fraglist").innerHTML = out.slice(0, fo.shown).map(({ k }) => {
-      const [name, brand, year, g, ids, fi, oi] = P[k];
-      const mine = ids.filter((i) => selSet.has(i)), rest = ids.filter((i) => !selSet.has(i));
-      const missing = sel.filter((i) => !ids.includes(i)).map((i) => notes[i]);
-      return `<li class="frag"><div class="ft"><b>${esc(name)}</b> <span>${esc(brand)}</span></div>` +
-        `<div class="fm">${year || "n/a"} · ${GL[g]}${fi >= 0 ? " · " + esc(D.fam_names[fi]) : ""}${oi >= 0 ? " · " + esc(D.org_names[oi]) : ""} · ${ids.length} ${ids.length === 1 ? "note" : "notes"}${missing.length ? ` · <u>missing ${esc(missing.join(", "))}</u>` : ""}</div>` +
-        `<div class="fn">${mine.map((i) => `<span class="n hit" style="${fs(i)}">${esc(notes[i])}</span>`).join("")}` +
-        rest.slice(0, 9).map((i) => `<span class="n">${esc(notes[i])}</span>`).join("") +
-        (rest.length > 9 ? `<span class="n more">+${rest.length - 9}</span>` : "") + `</div>` +
-        `<div class="facts"><button class="linkish" data-sim="${k}">Similar</button>` +
-        `<a class="linkish" target="_blank" rel="noopener" href="https://duckduckgo.com/?q=${encodeURIComponent(name + " " + brand + " perfume")}">Search</a></div>` +
-        `<div class="sim" id="sim-${k}" hidden></div></li>`;
-    }).join("");
+    $("fraglist").innerHTML = out.slice(0, fo.shown).map(({ k }) => fragItem(k, { sel: selSet, missing: sel.filter((i) => !P[k][4].includes(i)).map((i) => notes[i]), ctx: "x" })).join("");
     const more = $("fmore");
     more.hidden = out.length <= fo.shown;
     more.textContent = `Show ${Math.min(15, out.length - fo.shown)} more`;
@@ -349,14 +382,14 @@
     }).join("") + "</ul>";
   }
   function toggleSim(k, btn) {
-    const box = $("sim-" + k);
+    const box = btn.closest(".frag").querySelector(".sim");
     if (box.hidden) { if (!box.innerHTML) box.innerHTML = simHTML(k); box.hidden = false; btn.textContent = "Hide"; }
     else { box.hidden = true; btn.textContent = "Similar"; }
   }
   function downloadCsv() {
     if (!lastOut.length) return;
-    const rows = [["name", "brand", "year", "audience", "family", "country", "note_count", "notes"]];
-    lastOut.forEach(({ k }) => { const p = P[k]; rows.push([p[0], p[1], p[2] || "", GL[p[3]], p[5] >= 0 ? D.fam_names[p[5]] : "", p[6] >= 0 ? D.org_names[p[6]] : "", p[4].length, p[4].map((i) => notes[i]).join("; ")]); });
+    const rows = [["name", "brand", "year", "audience", "family", "country", "rating", "note_count", "notes"]];
+    lastOut.forEach(({ k }) => { const p = P[k]; rows.push([p[0], p[1], p[2] || "", p[3] >= 0 ? GL[p[3]] : "", p[5] >= 0 ? D.fam_names[p[5]] : "", p[6] >= 0 ? D.org_names[p[6]] : "", p[7] ? p[7] / 10 : "", p[4].length, p[4].map((i) => notes[i]).join("; ")]); });
     const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
@@ -477,9 +510,14 @@
     { key: "u", label: "Unisex", num: 1, m: 1, val: (r) => r.share[2], html: (r) => pct(r.share[2]) },
     { key: "lean", label: "Men’s ↔ women’s", val: (r) => r.lean, html: (r) => `<span class="sp"><span class="l"><i style="width:${(r.share[0] / gMax) * 100}%"></i></span><span class="r"><i style="width:${(r.share[1] / gMax) * 100}%"></i></span></span>` }] });
 
+  Object.assign(APP, { D, N, P, notes, ix, FO, FP, F, has, fs, chip, esc, fmt, pct, times, GL, mobile, $, show, setSel, mkTable,
+    fragItem, simHTML, ratingScore, bestPpm, priceOf, rankOf, factsHTML, view: () => view,
+    refresh: () => { if ($("fraglist") && view === "explore") renderFrags(); if (APP.hooks[view]) APP.hooks[view](); } });
+
   /* ---------- boot ---------- */
   const hp = new URLSearchParams(location.hash.slice(1));
   tab = hp.get("t") === "frags" ? "frags" : "pairs";
+  APP.ready = true;
   const names0 = (hp.get("n") || "").split(",").map((n) => ix.get(n)).filter((i) => i !== undefined);
   show(hp.get("v") || "explore", false);
   setSel(names0);

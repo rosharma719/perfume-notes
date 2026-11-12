@@ -18,19 +18,33 @@ Dedupe: 394 raw note strings -> 153 canonical notes (origins stripped: `Jasmine 
 aroma-chemicals folded into parent: `Galaxolide (Musk)` -> Musk; synonyms merged: `Rose Damascena` -> Rose).
 Clustering: 12 hand-curated families plus data-driven Louvain communities on positive-PMI edges.
 
+## Data
+
+`python3 build_site.py` builds `site/data.js` from several open datasets (see `catalog.py` and the About tab for licenses and dates).
+Run `python3 build_site.py --refresh` to re-download every source first. Needs `numpy`.
+
+| Source | Gives | As of |
+|---|---|---|
+| doevent/perfume (MIT) | 26k perfumes: notes, audience, family, country | 2024 |
+| junyeong-nero/perfume-dataset (license not stated) | 42k Parfumo perfumes: ratings, top/heart/base | 2024 |
+| scento/perfume-database (CC-BY) | current popular perfumes: pyramid, seasons, time of day | Oct 2026 |
+| 10ml price-per-ml index and dupe prices (CC-BY) | decant prices, original vs dupe | Sep-Oct 2026 |
+| scento/fragrance-index (CC-BY) | what Europe buys in decants | to Sep 2026 |
+
+The note catalog itself stops around 2024; prices, demand and the Scento list are current. The Parfumo dataset has no stated license:
+drop the `parfumo` source in `catalog.py` if that matters for how you use this.
+
 ## Site
 
 `site/` is a static page, no build step: open `site/index.html` or serve the folder (Archivo is self-hosted in `site/fonts`).
 Deploy on Vercel with Root Directory `site`, Framework "Other", no build command.
 
-Two-level navigation (the URL hash keeps view + selection, so views are shareable):
-- **Explore**: notes grouped by family. Select notes; related ones take their family colour, unrelated go gray. Side panel
-  (bottom sheet on phones): Pairings, and Fragrances (filter by name, audience, olfactive family, country; sort; near-matches;
-  Similar; CSV; copy link). "Browse perfumes" works without notes. `/` focuses note search.
-- **Combos**: Pairs, Trios, Stand-ins, Avoided. **Notes**: Trends, Formula size, Audience.
-- **Styles**: Families (classic fragrance wheel + subfamilies), Regions, Houses - signature notes, audience mix, share-of-releases trend.
-- **Market**: releases, audience mix and formula size by year. **About**: definitions and caveats.
+- **Explore**: select notes; related ones take their family colour, unrelated go gray. Pairings + Fragrances panel.
+- **For me**: *Taste* (love/avoid notes and families, audience), *Collection* (what you own, gaps and overlaps), *Shop*
+  (ranked suggestions that favour loved notes and gaps, avoid near-copies, and show rating, price, season). Stored in the
+  browser only; export/import as JSON.
+- **Buy**: Prices (decant EUR/ml), Dupes (original vs dupe, with note overlap), Trending (what Europe buys).
+- **Insights**: Pairs, Trios, Stand-ins, Avoided, Trends, Formula size, Audience (from the original 26k sample).
+- **Styles**: Families, Regions, Houses, By year. **About**: definitions and sources.
 
-All tables are sortable and filterable; rows jump to the matching fragrances.
-
-Regenerate its data with `python3 build_site.py` (needs `numpy`; writes `site/data.js`).
+The URL hash keeps the view and selection, so views are shareable.

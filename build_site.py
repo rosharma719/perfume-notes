@@ -4,7 +4,8 @@ import argparse, itertools, json, os
 import numpy as np
 from collections import Counter
 from math import log
-from build_graph import load, FAMILY, FAMILY_OF, _build_family_lookup
+from build_graph import load, normalise_note, FAMILY, FAMILY_OF, _build_family_lookup
+import catalog
 
 GENDER = {"Male": 0, "Female": 1, "Unisex": 2}
 BINS = [(0, 2004, "before 2005"), (2005, 2009, "2005–09"), (2010, 2014, "2010–14"),
@@ -21,8 +22,10 @@ def yr(p):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--raw", default="raw"); ap.add_argument("--out", default="site")
+    ap.add_argument("--refresh", action="store_true", help="re-download every source before building")
     a = ap.parse_args()
     rows = load(a.raw); N = len(rows)
+    cpaths = catalog.fetch(a.raw, a.refresh)
     freq = Counter(n for r in rows for n in r["notes"])
     notes = [n for n, _ in freq.most_common()]
     ix = {n: i for i, n in enumerate(notes)}
@@ -198,9 +201,19 @@ def main():
         h["med"] = int(np.median(yy)) if len(yy) else 0
         h["per"] = [round(float((binidx[idx] == b).sum() / max(1, (binidx == b).sum())), 4) for b in range(len(BINS))]
 
+    # ------------------------------------------------ merged catalog + buying feeds
+    nmap = catalog.NoteMap(notes, normalise_note)
+    cat_rows, priced, dupes, demand, cstats = catalog.build(rows, nmap, cpaths, ix)
+    perfumes = [[c["name"], c["brand"], c["year"], c["gender"], c["ids"], fidx.get(c["family"], -1), oidx.get(c["origin"], -1),
+                 int(round(c["rating"] * 10)) if c["rating"] else 0, c["reviews"]] for c in cat_rows]
+    pyr = {i: c["pyr"] for i, c in enumerate(cat_rows) if c["pyr"]}
+    meta = {i: c["meta"] + [c["rank"]] for i, c in enumerate(cat_rows) if c["meta"]}
+    print("catalog:", cstats)
+
     data = {
         "n": N, "notes": notes, "freq": f, "families": fams, "family_of": [fams.index(FAMILY_OF[n]) for n in notes],
-        "perfumes": [[r["name"], r["brand"], yr(r), GENDER[r["gender"]], ids, fidx.get(r["family"], -1), oidx.get(r["origin"], -1)] for r, ids in zip(rows, nid)],
+        "perfumes": perfumes, "pyr": pyr, "meta": meta, "priced": priced, "dupes": dupes, "demand": demand,
+        "sources": catalog.SOURCE_INFO, "cstats": cstats,
         "fam_names": [nice(x) for x in fam_names], "org_names": [nice(x) if x.isupper() else x for x in org_names],
         "olf": families, "olf_sub": subfamilies, "regions": regions, "market": market,
         "surprising": surprising, "avoid": avoid, "trios": trios, "trios_common": trios_common,

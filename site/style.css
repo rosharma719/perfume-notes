@@ -187,6 +187,55 @@ button.chip:hover{background:var(--m,var(--accent-wash))}
 .about dt:first-child{margin-top:0}
 .about dd{margin:.15rem 0 0}
 
+/* ---------- taste, shop, cards ---------- */
+.ttile{display:inline-flex;align-items:baseline;gap:.4rem;padding:.42rem .7rem;border-radius:6px;font-size:.88rem;line-height:1.2;background:var(--p,var(--surface));color:var(--ink);transition:background .15s}
+.ttile:hover{background:var(--m,var(--accent-wash))}
+.ttile.love{background:#d8f0dd;color:#1e6844;box-shadow:inset 0 0 0 2px #2e7733;font-weight:600}
+.ttile.love:before{content:"+";font-weight:700}
+.ttile.avoid{background:#fde7e5;color:#a5352d;box-shadow:inset 0 0 0 2px #d9534f;text-decoration:line-through}
+.ttile.avoid:before{content:"\2212";display:inline-block;text-decoration:none}
+.chiprow{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+.chiprow .hint{margin:0 0 0 .4rem}
+.tbar{display:flex;justify-content:space-between;gap:1rem;margin:0 0 1.2rem;font-size:.9rem;color:var(--mute)}
+.tbar .linkish{margin-left:1rem}
+.filelab{cursor:pointer}
+.tboard{margin-bottom:1rem}
+.pane .flist{max-width:54rem}
+.facts2{display:flex;flex-wrap:wrap;gap:.35rem;margin:0 0 .5rem}
+.fact{font-size:.74rem;font-weight:500;color:var(--body);background:var(--surface);padding:.12rem .5rem;border-radius:5px}
+.fact i{font-style:normal;color:var(--faint);margin-left:.3rem}
+.fact.hot{background:#fdeed2;color:#8a5a00}
+.pyr{display:flex;gap:.6rem;align-items:baseline;margin-top:.3rem}
+.pyr b{flex:none;width:2.7rem;font-size:.66rem;font-weight:600;color:var(--mute);text-transform:uppercase;letter-spacing:.03em}
+.why-row{display:flex;flex-wrap:wrap;gap:.35rem;margin:0 0 .55rem}
+.why{font-size:.76rem;font-weight:500;padding:.14rem .55rem;border-radius:999px}
+.why.love{background:#d8f0dd;color:#1e6844}
+.why.gap{background:var(--accent-wash);color:var(--accent)}
+.why.warn{background:#fdeed2;color:#8a5a00}
+.why.bad{background:#fde7e5;color:#a5352d}
+.frag .ft .fit{color:#fff}
+.fit{display:inline-grid;place-items:center;min-width:2rem;height:1.5rem;border-radius:999px;background:var(--accent);color:#fff;font-size:.75rem;font-weight:600;margin-right:.5rem;vertical-align:.1rem}
+.facts .linkish.on{color:var(--ink);font-weight:600;text-decoration-thickness:2px}
+.empty-li{list-style:none;color:var(--mute);padding:.8rem 0;font-size:.9rem}
+.res{list-style:none;display:flex;justify-content:space-between;gap:1rem;align-items:center;padding:.5rem 0;border-bottom:1px solid var(--line)}
+.res i{font-style:normal;color:var(--mute)}
+.rl{margin-bottom:1rem}
+.an-grid{display:grid;grid-template-columns:1fr 1fr;gap:2.5rem;margin:1rem 0}
+.fbar{display:grid;grid-template-columns:9rem 1fr 3rem;align-items:center;gap:.6rem;font-size:.85rem;margin:.25rem 0}
+.fbar i{display:block;height:.55rem;background:var(--accent-soft);border-radius:3px;min-width:2px}
+.fbar b{font-weight:500;text-align:right}
+.fbar.zero{color:var(--faint)}
+.ovl{font-size:.88rem;margin:.3rem 0}
+.ovl i{font-style:normal;color:var(--mute);margin-left:.3rem}
+.sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:.7rem;margin-bottom:.8rem;max-width:54rem}
+.sgrid label,.schk label{font-size:.78rem;color:var(--mute);display:flex;flex-direction:column;gap:.2rem}
+.sgrid select{font:inherit;font-size:.9rem;color:var(--ink);border:1px solid var(--line);background:#fff;border-radius:6px;padding:.45rem .4rem;width:100%}
+.schk{display:flex;flex-wrap:wrap;gap:.4rem 1.4rem;margin-bottom:.4rem}
+.schk label{flex-direction:row;align-items:center;gap:.45rem;font-size:.85rem}
+.schk input{accent-color:var(--accent);width:1.05rem;height:1.05rem}
+.sub{color:var(--mute);font-size:.82rem;margin-left:.2rem}
+.count-n{font-weight:400;color:var(--mute)}
+
 /* ---------- tablet / phone ---------- */
 @media (max-width:980px){
   .inner,.top{padding-left:1.1rem;padding-right:1.1rem}
@@ -222,10 +271,16 @@ button.chip:hover{background:var(--m,var(--accent-wash))}
   .pbody{padding:0 1.1rem 2.5rem}
   .empty-t{margin:0 0 .4rem}
 }
+@media (max-width:440px){
+  .pt{font-size:.82rem}
+}
 @media (max-width:380px){
   .pt{font-size:.86rem}
 }
 @media (max-width:700px){
+  .an-grid{grid-template-columns:1fr;gap:1rem}
+  .sgrid{grid-template-columns:1fr 1fr}
+  .fbar{grid-template-columns:7rem 1fr 2.5rem}
   .grid .hide-m{display:none}
   .grid{font-size:.86rem}
   .grid td,.grid th{padding-right:.5rem}
