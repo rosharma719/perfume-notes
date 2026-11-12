@@ -383,6 +383,7 @@
     { key: "data", label: "Used for", html: (r) => esc(r.data) },
     { key: "license", label: "License", m: 1, val: (r) => r.license, dir: 1, html: (r) => esc(r.license) },
     { key: "as_of", label: "As of", val: (r) => r.as_of, html: (r) => esc(r.as_of) }] });
+  if ($("build-stamp")) $("build-stamp").textContent = window.BUILD || "unknown";
   const cs = D.cstats;
   if ($("cat-stats")) $("cat-stats").textContent = `${fmt(cs.raw_records)} source records were merged into ${fmt(cs.catalog)} perfumes (${fmt(cs.merged)} duplicates folded together, ${cs.brand_aliases} brand spellings unified, ${cs.new_notes} notes added). ${fmt(cs.rated)} have ratings, ${fmt(cs.pyramids)} have top/heart/base notes, ${fmt(cs.priced)} are priced (${fmt(cs.priced_matched)} matched to notes).`;
 
