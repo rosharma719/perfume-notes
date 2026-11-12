@@ -142,9 +142,67 @@ def main():
         house.append({"brand": b, "n": n, "mean": round(float(sz[idx].mean()), 1),
                       "top": [{"note": notes[i], "lift": round(float(lf[i]), 1), "share": round(float(share[i]), 3)} for i in cand[:3]]})
 
+    # ------------------------------------------------ styles: families, regions, market
+    def nice(t):
+        t = t.title().replace("Fougere", "Fougère").replace(" Of ", " of ")
+        return t
+    def names_of(key, minn):
+        c = Counter(r[key] for r in rows if r[key])
+        return [k for k, v in c.most_common() if v >= minn]
+    fam_names = names_of("family", 1)
+    sub_names = names_of("subfamily", 100)
+    org_names = names_of("origin", 60)
+    fidx = {k: i for i, k in enumerate(fam_names)}
+    sidx = {k: i for i, k in enumerate(sub_names)}
+    oidx = {k: i for i, k in enumerate(org_names)}
+
+    binidx = np.full(N, -1)
+    for b, (lo, hi, _) in enumerate(BINS):
+        binidx[(years >= max(lo, 1)) & (years <= hi)] = b
+    gend = np.array([GENDER[r["gender"]] for r in rows])
+    tot_arr = np.array(tot, dtype=float)
+
+    def profile(idx):
+        idx = np.array(idx); n = len(idx)
+        cnt = X[idx].sum(0); share = cnt / n; lf = share / (fv / N)
+        okn = [i for i in range(len(notes)) if ok[i]]
+        core = [i for i in sorted(okn, key=lambda i: -share[i]) if lf[i] >= 1.12][:4]
+        sig = [i for i in sorted(okn, key=lambda i: -lf[i]) if cnt[i] >= max(6, 0.04 * n) and lf[i] >= 1.25][:4]
+        yrs = years[idx]; yrs = yrs[yrs > 0]
+        per = [round(float((binidx[idx] == b).sum() / tot_arr[b]), 4) for b in range(len(BINS))]
+        aud = [round(float((gend[idx] == g).mean()), 3) for g in range(3)]
+        mk = lambda i: {"note": notes[i], "lift": round(float(lf[i]), 1)}
+        return {"n": n, "mean": round(float(sz[idx].mean()), 1), "aud": aud,
+                "med": int(np.median(yrs)) if len(yrs) else 0, "per": per,
+                "core": [mk(i) for i in core], "sig": [mk(i) for i in sig]}
+
+    def group(key, names):
+        out = []
+        for nm in names:
+            idx = [k for k, r in enumerate(rows) if r[key] == nm]
+            p = profile(idx); p["name"] = nice(nm); out.append(p)
+        return out
+    families = group("family", fam_names)
+    subfamilies = group("subfamily", sub_names)
+    regions = group("origin", org_names)
+
+    market = []
+    for y in range(2000, int(years.max()) + 1):
+        idx = np.where(years == y)[0]
+        if len(idx) < 30: continue
+        market.append({"year": y, "n": int(len(idx)), "aud": [round(float((gend[idx] == g).mean()), 3) for g in range(3)],
+                       "mean": round(float(sz[idx].mean()), 1)})
+    for h in house:
+        idx = np.array(brands[h["brand"]]); yy = years[idx]; yy = yy[yy > 0]
+        h["aud"] = [round(float((gend[idx] == g).mean()), 3) for g in range(3)]
+        h["med"] = int(np.median(yy)) if len(yy) else 0
+        h["per"] = [round(float((binidx[idx] == b).sum() / max(1, (binidx == b).sum())), 4) for b in range(len(BINS))]
+
     data = {
         "n": N, "notes": notes, "freq": f, "families": fams, "family_of": [fams.index(FAMILY_OF[n]) for n in notes],
-        "perfumes": [[r["name"], r["brand"], yr(r), GENDER[r["gender"]], ids] for r, ids in zip(rows, nid)],
+        "perfumes": [[r["name"], r["brand"], yr(r), GENDER[r["gender"]], ids, fidx.get(r["family"], -1), oidx.get(r["origin"], -1)] for r, ids in zip(rows, nid)],
+        "fam_names": [nice(x) for x in fam_names], "org_names": [nice(x) if x.isupper() else x for x in org_names],
+        "olf": families, "olf_sub": subfamilies, "regions": regions, "market": market,
         "surprising": surprising, "avoid": avoid, "trios": trios, "trios_common": trios_common,
         "bins": [b[2] for b in BINS], "bin_totals": tot, "time": time_rows,
         "gender_totals": gt, "gender": gender_rows,

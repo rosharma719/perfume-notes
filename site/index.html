@@ -14,19 +14,9 @@
   <p class="stat"><span id="n-notes"></span> notes · <span id="n-perf"></span> perfumes</p>
 </header>
 
-<nav class="tabbar" id="tabbar" aria-label="Views">
-  <div class="tabbar-in" role="tablist">
-    <button class="vt on" role="tab" data-view="explore">Explore</button>
-    <button class="vt" role="tab" data-view="pairs">Pairs</button>
-    <button class="vt" role="tab" data-view="trios">Trios</button>
-    <button class="vt" role="tab" data-view="swap">Stand-ins</button>
-    <button class="vt" role="tab" data-view="avoid">Avoided</button>
-    <button class="vt" role="tab" data-view="trends">Trends</button>
-    <button class="vt" role="tab" data-view="houses">Houses</button>
-    <button class="vt" role="tab" data-view="formulas">Formula size</button>
-    <button class="vt" role="tab" data-view="audience">Audience</button>
-    <button class="vt" role="tab" data-view="about">About</button>
-  </div>
+<nav class="tabbar" id="tabbar" aria-label="Sections">
+  <div class="ptabs" id="ptabs" role="tablist"></div>
+  <div class="sbar" id="sbar"><div class="stabs" id="stabs" role="tablist"></div></div>
 </nav>
 
 <main>
@@ -36,7 +26,7 @@
     <div class="inner">
       <div class="finder">
         <input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="Find a note (press /)" aria-label="Find a note">
-        <button id="lookup" class="linkish">Look up a perfume</button>
+        <button id="lookup" class="linkish">Browse perfumes</button>
         <button id="clear" class="linkish" hidden>Clear</button>
         <span class="key"><i class="sw hot"></i>pairs with selection <i class="sw cold"></i>unrelated</span>
       </div>
@@ -91,9 +81,38 @@
   </div>
 </section>
 
+<section class="pane" id="v-families" data-view="families" hidden>
+  <div class="inner">
+    <p class="lede">The classic fragrance families. Core notes are the most common within a family; signature notes are over-represented compared with all perfumes. Trend bars show each family’s share of releases, before 2005 to 2020 on.</p>
+    <p class="legend">Audience <i class="k m"></i>men’s <i class="k w"></i>women’s <i class="k u"></i>unisex</p>
+    <input class="tabfilter" data-filter="t-fam,t-sub" type="search" placeholder="Filter by family or note" aria-label="Filter">
+    <h3>Families</h3>
+    <table class="grid" id="t-fam"></table>
+    <h3>Subfamilies</h3>
+    <table class="grid" id="t-sub"></table>
+  </div>
+</section>
+
+<section class="pane" id="v-regions" data-view="regions" hidden>
+  <div class="inner">
+    <p class="lede">Countries with at least 60 perfumes, by the notes they over-use and how their output is changing. Country is the brand’s, and is unknown for some perfumes.</p>
+    <p class="legend">Audience <i class="k m"></i>men’s <i class="k w"></i>women’s <i class="k u"></i>unisex</p>
+    <input class="tabfilter" data-filter="t-reg" type="search" placeholder="Filter by country or note" aria-label="Filter">
+    <table class="grid" id="t-reg"></table>
+  </div>
+</section>
+
+<section class="pane" id="v-market" data-view="market" hidden>
+  <div class="inner">
+    <p class="lede">Releases per year, audience mix and formula size. The latest year is partial, and years before 2000 are too thin to show.</p>
+    <p class="legend">Audience <i class="k m"></i>men’s <i class="k w"></i>women’s <i class="k u"></i>unisex</p>
+    <table class="grid" id="t-market"></table>
+  </div>
+</section>
+
 <section class="pane" id="v-houses" data-view="houses" hidden>
   <div class="inner">
-    <p class="lede">Notes each house uses far more than the market average (multiple shown).</p>
+    <p class="lede">Notes each house uses far more than the market average (multiple shown), with audience mix and median release year.</p>
     <input class="tabfilter" data-filter="t-houses" type="search" placeholder="Filter by house or note" aria-label="Filter">
     <table class="grid" id="t-houses"></table>
   </div>

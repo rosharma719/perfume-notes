@@ -142,6 +142,7 @@ def load(raw_dir):
         if canon:
             rows.append({"id": len(rows), "brand": r["brand"].strip(),
                          "name": r["name_perfume"].strip(), "year": r["years"], "gender": r["gender"],
+                         "family": r["family"].strip(), "subfamily": r["subfamily"].strip(), "origin": r["origin"].strip(),
                          "notes": canon, "raw_notes": notes})
     return rows
 

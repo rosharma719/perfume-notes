@@ -23,11 +23,14 @@ Clustering: 12 hand-curated families plus data-driven Louvain communities on pos
 `site/` is a static page, no build step: open `site/index.html` or serve the folder (Archivo is self-hosted in `site/fonts`).
 Deploy on Vercel with Root Directory `site`, Framework "Other", no build command.
 
-Tabs (the URL hash keeps tab + selection, so views are shareable):
+Two-level navigation (the URL hash keeps view + selection, so views are shareable):
 - **Explore**: notes grouped by family. Select notes; related ones take their family colour, unrelated go gray. Side panel
-  (bottom sheet on phones): Pairings, and Fragrances (filter, sort, near-matches, Similar, CSV, copy link).
-  "Look up a perfume" works without selecting notes. `/` focuses note search.
-- **Pairs, Trios, Stand-ins, Avoided, Trends, Houses, Formula size, Audience**: sortable, filterable tables; rows jump to matching fragrances.
-- **About**: definitions and caveats.
+  (bottom sheet on phones): Pairings, and Fragrances (filter by name, audience, olfactive family, country; sort; near-matches;
+  Similar; CSV; copy link). "Browse perfumes" works without notes. `/` focuses note search.
+- **Combos**: Pairs, Trios, Stand-ins, Avoided. **Notes**: Trends, Formula size, Audience.
+- **Styles**: Families (classic fragrance wheel + subfamilies), Regions, Houses - signature notes, audience mix, share-of-releases trend.
+- **Market**: releases, audience mix and formula size by year. **About**: definitions and caveats.
+
+All tables are sortable and filterable; rows jump to the matching fragrances.
 
 Regenerate its data with `python3 build_site.py` (needs `numpy`; writes `site/data.js`).

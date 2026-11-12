@@ -40,15 +40,26 @@
 
   /* ---------- state ---------- */
   let sel = [], tab = "pairs", ctx = null, lastOut = [], lookupOpen = false, solo = null;
-  const fo = { gender: "all", sort: "clean", near: false, q: "", shown: 15 };
+  const fo = { gender: "all", family: "all", origin: "all", sort: "clean", near: false, q: "", shown: 15 };
   const chip = (i, attr) => `<button class="chip" ${attr || `data-set="${esc(notes[i])}"`} style="${fs(i)}">${esc(notes[i])}</button>`;
   const chips = (names) => names.map((n) => chip(ix.get(n))).join("");
   const act = (names, label) => `<button class="act" data-set="${esc(names.join("|"))}" data-go="frags">${label}</button>`;
 
   /* ---------- views + url ---------- */
-  const VIEWS = ["explore", "pairs", "trios", "swap", "avoid", "trends", "houses", "formulas", "audience", "about"];
+  const GROUPS = [
+    { id: "explore", label: "Explore", views: [["explore", "Explore"]] },
+    { id: "combos", label: "Combos", views: [["pairs", "Pairs"], ["trios", "Trios"], ["swap", "Stand-ins"], ["avoid", "Avoided"]] },
+    { id: "notes", label: "Notes", views: [["trends", "Trends"], ["formulas", "Formula size"], ["audience", "Audience"]] },
+    { id: "styles", label: "Styles", views: [["families", "Families"], ["regions", "Regions"], ["houses", "Houses"]] },
+    { id: "market", label: "Market", views: [["market", "By year"]] },
+    { id: "about", label: "About", views: [["about", "About"]] },
+  ];
+  const VIEWS = GROUPS.flatMap((g) => g.views.map((v) => v[0]));
+  const groupOf = (v) => GROUPS.find((g) => g.views.some((x) => x[0] === v));
+  const lastIn = {};
   let view = "explore";
-  const tabbar = $("tabbar"), vts = [...tabbar.querySelectorAll(".vt")], panes = [...document.querySelectorAll(".pane")];
+  const tabbar = $("tabbar"), panes = [...document.querySelectorAll(".pane")];
+  $("ptabs").innerHTML = GROUPS.map((g) => `<button class="pt" role="tab" data-group="${g.id}">${g.label}</button>`).join("");
   function writeHash() {
     const p = [];
     if (view !== "explore") p.push("v=" + view);
@@ -56,17 +67,20 @@
     if (sel.length && tab === "frags") p.push("t=frags");
     try { history.replaceState(null, "", location.pathname + location.search + (p.length ? "#" + p.join("&") : "")); } catch (e) {}
   }
+  function syncTabH() { document.documentElement.style.setProperty("--tabh", tabbar.offsetHeight + "px"); }
+  window.addEventListener("resize", syncTabH);
   function show(v, scroll) {
     if (!VIEWS.includes(v)) v = "explore";
     view = v;
+    const g = groupOf(v); lastIn[g.id] = v;
     panes.forEach((p) => (p.hidden = p.dataset.view !== v));
-    vts.forEach((b) => { const on = b.dataset.view === v; b.classList.toggle("on", on); b.setAttribute("aria-selected", on); });
+    document.querySelectorAll(".pt").forEach((b) => { const on = b.dataset.group === g.id; b.classList.toggle("on", on); b.setAttribute("aria-selected", on); });
+    $("sbar").hidden = g.views.length < 2;
+    $("stabs").innerHTML = g.views.length < 2 ? "" : g.views.map(([id, label]) => `<button class="st${id === v ? " on" : ""}" role="tab" data-view="${id}">${label}</button>`).join("");
     document.body.dataset.view = v;
     if (v !== "explore") $("panel").classList.remove("open");
-    writeHash();
+    writeHash(); syncTabH();
     if (scroll) { const top = tabbar.offsetTop; if (window.scrollY > top) window.scrollTo(0, top); }
-    const on = vts.find((b) => b.dataset.view === v);
-    if (on && on.scrollIntoView) { try { on.scrollIntoView({ inline: "center", block: "nearest" }); } catch (e) {} }
   }
   const vis = () => document.body.classList.toggle("has-sel", sel.length > 0 || lookupOpen);
 
@@ -78,7 +92,8 @@
       if (!sel.length) { lookupOpen = false; vis(); }
     }
     let el;
-    if ((el = T(".vt"))) { show(el.dataset.view, true); return; }
+    if ((el = T(".pt"))) { const g = GROUPS.find((x) => x.id === el.dataset.group); show(lastIn[g.id] || g.views[0][0], true); return; }
+    if ((el = T(".st"))) { show(el.dataset.view, true); return; }
     if ((el = T("[data-sort]"))) { sortBy(...el.dataset.sort.split(":")); return; }
     if ((el = T("[data-tab]"))) {
       const same = tab === el.dataset.tab;
@@ -92,6 +107,7 @@
     if (T("[data-csv]")) { downloadCsv(); return; }
     if ((el = T("[data-copy]"))) { copyLink(el); return; }
     if ((el = T("[data-house]"))) { goHouse(el.dataset.house); return; }
+    if ((el = T("[data-filt]"))) { goFilter(...el.dataset.filt.split(":")); return; }
     if (T("#lookup")) { openLookup(); return; }
     if (T("#clear")) { setSel([]); return; }
     if ((el = T("[data-fam]"))) { const v = +el.dataset.fam; solo = solo === v ? null : v; applySolo(); return; }
@@ -117,6 +133,8 @@
   $("panel").addEventListener("input", (e) => { if (e.target.id === "fq") { fo.q = e.target.value; fo.shown = 15; renderFrags(); } });
   $("panel").addEventListener("change", (e) => {
     if (e.target.id === "fsort") { fo.sort = e.target.value; fo.shown = 15; renderFrags(); }
+    if (e.target.id === "ffam") { fo.family = e.target.value; fo.shown = 15; renderFrags(); }
+    if (e.target.id === "forg") { fo.origin = e.target.value; fo.shown = 15; renderFrags(); }
     if (e.target.id === "fnear") { fo.near = e.target.checked; fo.shown = 15; renderFrags(); }
   });
   function applyFilter(input) {
@@ -127,18 +145,25 @@
 
   function toggle(i) { setSel(sel.includes(i) ? sel.filter((x) => x !== i) : sel.concat(i)); }
   function setSel(list) {
+    const was = sel.length;
     sel = list.filter((i) => i !== undefined);
+    if (!was && sel.length) fo.sort = "clean";
     if (!sel.length) lookupOpen = false;
     fo.shown = 15;
     render(); writeHash();
   }
   function openLookup() {
-    setSel([]); lookupOpen = true; vis(); renderPanel(true);
+    setSel([]); lookupOpen = true; fo.sort = "new"; vis(); renderPanel(true);
     if (mobile()) $("panel").classList.add("open");
     setTimeout(() => { const f = $("fq"); if (f) f.focus(); }, 50);
   }
   function goHouse(brand) {
-    setSel([]); lookupOpen = true; fo.q = brand; fo.gender = "all"; vis();
+    setSel([]); lookupOpen = true; fo.sort = "new"; fo.q = brand; fo.gender = "all"; fo.family = "all"; fo.origin = "all"; vis();
+    show("explore", true); renderPanel(true);
+    if (mobile()) $("panel").classList.add("open");
+  }
+  function goFilter(kind, idx) {
+    setSel([]); lookupOpen = true; fo.sort = "new"; fo.q = ""; fo.gender = "all"; fo.family = kind === "fam" ? idx : "all"; fo.origin = kind === "reg" ? idx : "all"; vis();
     show("explore", true); renderPanel(true);
     if (mobile()) $("panel").classList.add("open");
   }
@@ -204,7 +229,7 @@
   function renderPanel(top) {
     const panel = $("panel");
     if (!ctx) {
-      panel.innerHTML = `<div class="phead"><p class="empty-t">Look up a perfume</p></div><div class="pbody">${fragsHTML()}</div>`;
+      panel.innerHTML = `<div class="phead"><p class="empty-t">Browse fragrances</p></div><div class="pbody">${fragsHTML()}</div>`;
       renderFrags(); if (top) panel.scrollTop = 0; return;
     }
     const { M, sizeSum } = ctx;
@@ -244,6 +269,8 @@
     const seg = (key, opts) => `<div class="seg">` + opts.map(([v, l]) => `<button data-fo="${key}:${v}" class="${fo[key] === v ? "on" : ""}">${l}</button>`).join("") + "</div>";
     return `<div class="fctl"><input id="fq" type="search" placeholder="${sel.length ? "Filter by name or brand" : "Name or brand"}" value="${esc(fo.q)}" autocomplete="off" spellcheck="false" aria-label="Name or brand">` +
       seg("gender", [["all", "All"], ["0", "Men’s"], ["1", "Women’s"], ["2", "Unisex"]]) +
+      `<div class="fsel"><label>Family <select id="ffam"><option value="all">Any</option>${D.fam_names.map((n, i) => `<option value="${i}"${fo.family === String(i) ? " selected" : ""}>${esc(n)}</option>`).join("")}</select></label>` +
+      `<label>Country <select id="forg"><option value="all">Any</option>${D.org_names.map((n, i) => `<option value="${i}"${fo.origin === String(i) ? " selected" : ""}>${esc(n)}</option>`).join("")}</select></label></div>` +
       `<label class="sort">Sort <select id="fsort">` +
       [["clean", "Simplest first"], ["new", "Newest first"], ["rich", "Most complex first"]].map(([v, l]) => `<option value="${v}"${fo.sort === v ? " selected" : ""}>${l}</option>`).join("") + `</select></label>` +
       (sel.length >= 2 ? `<label class="chk"><input type="checkbox" id="fnear"${fo.near || ctx.M === 0 ? " checked" : ""}${ctx.M === 0 ? " disabled" : ""}> Include perfumes missing one note</label>` : "") +
@@ -254,13 +281,15 @@
   function runFrags() {
     const need = sel.length, near = (fo.near || (ctx && ctx.M === 0)) && need >= 2;
     const qq = fo.q.trim().toLowerCase();
-    if (need === 0 && qq.length < 2) return null;
+    if (need === 0 && qq.length < 2 && fo.family === "all" && fo.origin === "all") return null;
     const out = [];
     for (let k = 0; k < N; k++) {
       let sc = 0; for (const i of sel) sc += has[i][k];
       if (need && (!sc || sc < (near ? need - 1 : need))) continue;
       const p = P[k];
       if (fo.gender !== "all" && String(p[3]) !== fo.gender) continue;
+      if (fo.family !== "all" && String(p[5]) !== fo.family) continue;
+      if (fo.origin !== "all" && String(p[6]) !== fo.origin) continue;
       if (qq && !(p[0] + " " + p[1]).toLowerCase().includes(qq)) continue;
       out.push({ k, sc });
     }
@@ -276,16 +305,16 @@
 
   function renderFrags() {
     const res = runFrags();
-    if (!res) { lastOut = []; $("fcount").textContent = "Type 2+ letters"; $("fraglist").innerHTML = ""; $("fmore").hidden = true; return; }
+    if (!res) { lastOut = []; $("fcount").textContent = "Type 2+ letters, or pick a family or country"; $("fraglist").innerHTML = ""; $("fmore").hidden = true; return; }
     const { out, near } = res; lastOut = out;
     const selSet = new Set(sel);
     $("fcount").textContent = out.length ? `${fmt(out.length)} ${out.length === 1 ? "fragrance" : "fragrances"}${near ? " (some missing a note)" : ""}` : "No matches";
     $("fraglist").innerHTML = out.slice(0, fo.shown).map(({ k }) => {
-      const [name, brand, year, g, ids] = P[k];
+      const [name, brand, year, g, ids, fi, oi] = P[k];
       const mine = ids.filter((i) => selSet.has(i)), rest = ids.filter((i) => !selSet.has(i));
       const missing = sel.filter((i) => !ids.includes(i)).map((i) => notes[i]);
       return `<li class="frag"><div class="ft"><b>${esc(name)}</b> <span>${esc(brand)}</span></div>` +
-        `<div class="fm">${year || "n/a"} · ${GL[g]} · ${ids.length} ${ids.length === 1 ? "note" : "notes"}${missing.length ? ` · <u>missing ${esc(missing.join(", "))}</u>` : ""}</div>` +
+        `<div class="fm">${year || "n/a"} · ${GL[g]}${fi >= 0 ? " · " + esc(D.fam_names[fi]) : ""}${oi >= 0 ? " · " + esc(D.org_names[oi]) : ""} · ${ids.length} ${ids.length === 1 ? "note" : "notes"}${missing.length ? ` · <u>missing ${esc(missing.join(", "))}</u>` : ""}</div>` +
         `<div class="fn">${mine.map((i) => `<span class="n hit" style="${fs(i)}">${esc(notes[i])}</span>`).join("")}` +
         rest.slice(0, 9).map((i) => `<span class="n">${esc(notes[i])}</span>`).join("") +
         (rest.length > 9 ? `<span class="n more">+${rest.length - 9}</span>` : "") + `</div>` +
@@ -327,8 +356,8 @@
   }
   function downloadCsv() {
     if (!lastOut.length) return;
-    const rows = [["name", "brand", "year", "audience", "note_count", "notes"]];
-    lastOut.forEach(({ k }) => { const p = P[k]; rows.push([p[0], p[1], p[2] || "", GL[p[3]], p[4].length, p[4].map((i) => notes[i]).join("; ")]); });
+    const rows = [["name", "brand", "year", "audience", "family", "country", "note_count", "notes"]];
+    lastOut.forEach(({ k }) => { const p = P[k]; rows.push([p[0], p[1], p[2] || "", GL[p[3]], p[5] >= 0 ? D.fam_names[p[5]] : "", p[6] >= 0 ? D.org_names[p[6]] : "", p[4].length, p[4].map((i) => notes[i]).join("; ")]); });
     const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
@@ -399,10 +428,40 @@
     { key: "ratio", label: "Change", num: 1, val: (r) => r.ratio, html: (r) => (r.ratio >= 1 ? times(r.ratio) + " up" : times(1 / r.ratio) + " down") },
     go((r) => [r.a, r.b], "Fragrances")] });
 
+  const stk = (a) => `<span class="stk" title="men’s ${pct(a[0])} · women’s ${pct(a[1])} · unisex ${pct(a[2])}"><i class="m" style="width:${a[0] * 100}%"></i><i class="w" style="width:${a[1] * 100}%"></i><i class="u" style="width:${a[2] * 100}%"></i></span>`;
+  const perBars = (per) => { const mx = Math.max(...per); return `<span class="bars" title="${D.bins.join(" · ")}">` + per.map((s) => `<i style="height:${Math.max(6, (s / mx) * 100)}%"></i>`).join("") + "</span>"; };
+  const noteChips = (list, lift) => list.length ? list.map((t) => `<button class="chip" data-set="${esc(t.note)}" style="${fs(ix.get(t.note))}">${esc(t.note)}${lift ? ` <i>${times(t.lift)}</i>` : ""}</button>`).join("") : "–";
+  const styleCols = (label, kind) => [
+    { key: "name", label, dir: 1, val: (r) => r.name, html: (r) => `<b>${esc(r.name)}</b>` },
+    { key: "n", label: "Perfumes", num: 1, m: 1, val: (r) => r.n, html: (r) => fmt(r.n) },
+    { key: "trend", label: "Share of releases", m: 1, html: (r) => perBars(r.per) },
+    { key: "now", label: "Share now", num: 1, m: 1, val: (r) => r.per[4], html: (r) => pct(r.per[4]) },
+    { key: "chg", label: "Change", num: 1, val: (r) => r.per[4] - r.per[0], html: (r) => sgn((r.per[4] - r.per[0]) * 100, 1) + " pts" },
+    { key: "mean", label: "Avg notes", num: 1, m: 1, val: (r) => r.mean, html: (r) => r.mean },
+    { key: "aud", label: "Audience", m: 1, html: (r) => stk(r.aud) },
+    { key: "core", label: "Core notes", m: 1, html: (r) => noteChips(r.core, false) },
+    { key: "sig", label: "Signature notes", html: (r) => noteChips(r.sig, true) },
+    ...(kind ? [{ key: "go", label: "", html: (r) => `<button class="act" data-filt="${kind}:${r.idx}">Browse</button>` }] : []),
+  ];
+  mkTable("t-fam", { sort: "n", rows: D.olf.map((r, idx) => ({ ...r, idx })), cols: styleCols("Family", "fam") });
+  mkTable("t-sub", { sort: "n", rows: D.olf_sub, cols: styleCols("Subfamily", null) });
+  mkTable("t-reg", { sort: "n", rows: D.regions.map((r, idx) => ({ ...r, idx })), cols: styleCols("Country", "reg") });
+  const mxN = Math.max(...D.market.map((r) => r.n));
+  mkTable("t-market", { sort: "year", rows: D.market, cols: [
+    { key: "year", label: "Year", val: (r) => r.year, html: (r) => `<b>${r.year}</b>` },
+    { key: "n", label: "Releases", val: (r) => r.n, html: (r) => `<span class="hb"><i style="width:${(r.n / mxN) * 100}%"></i></span> ${fmt(r.n)}` },
+    { key: "m", label: "Men’s", num: 1, val: (r) => r.aud[0], html: (r) => pct(r.aud[0]) },
+    { key: "w", label: "Women’s", num: 1, val: (r) => r.aud[1], html: (r) => pct(r.aud[1]) },
+    { key: "u", label: "Unisex", num: 1, val: (r) => r.aud[2], html: (r) => pct(r.aud[2]) },
+    { key: "s", label: "Mix", m: 1, html: (r) => stk(r.aud) },
+    { key: "mean", label: "Avg notes", num: 1, val: (r) => r.mean, html: (r) => r.mean }] });
+
   mkTable("t-houses", { sort: "n", rows: D.house, cols: [
     { key: "brand", label: "House", dir: 1, val: (r) => r.brand, html: (r) => `<b>${esc(r.brand.replace(/'S\b/g, "'s"))}</b>` },
     { key: "n", label: "Perfumes", num: 1, m: 1, val: (r) => r.n, html: (r) => fmt(r.n) },
     { key: "mean", label: "Avg notes", num: 1, m: 1, val: (r) => r.mean, html: (r) => r.mean },
+    { key: "med", label: "Median year", num: 1, m: 1, val: (r) => r.med, html: (r) => r.med },
+    { key: "aud", label: "Audience", m: 1, html: (r) => stk(r.aud) },
     { key: "sig", label: "Signature notes", html: (r) => r.top.map((t) => `<button class="chip" data-set="${esc(t.note)}" style="${fs(ix.get(t.note))}">${esc(t.note)} <i>${times(t.lift)}</i></button>`).join("") },
     { key: "go", label: "", html: (r) => `<button class="act" data-house="${esc(r.brand)}">Browse</button>` }] });
 
