@@ -202,16 +202,19 @@ def main():
         h["per"] = [round(float((binidx[idx] == b).sum() / max(1, (binidx == b).sum())), 4) for b in range(len(BINS))]
 
     # ------------------------------------------------ merged catalog + buying feeds
-    nmap = catalog.NoteMap(notes, normalise_note)
-    cat_rows, priced, dupes, demand, cstats = catalog.build(rows, nmap, cpaths, ix)
+    cat_rows, priced, dupes, demand, cstats, extras, bmerged = catalog.build(rows, notes, normalise_note, FAMILY_OF, cpaths)
+    notes_out = notes + [n for n, _ in extras]
+    family_out = [fams.index(FAMILY_OF[n]) for n in notes] + [fams.index(f) for _, f in extras]
     perfumes = [[c["name"], c["brand"], c["year"], c["gender"], c["ids"], fidx.get(c["family"], -1), oidx.get(c["origin"], -1),
                  int(round(c["rating"] * 10)) if c["rating"] else 0, c["reviews"]] for c in cat_rows]
     pyr = {i: c["pyr"] for i, c in enumerate(cat_rows) if c["pyr"]}
     meta = {i: c["meta"] + [c["rank"]] for i, c in enumerate(cat_rows) if c["meta"]}
     print("catalog:", cstats)
+    print("new notes:", [(n, f) for n, f in extras])
+    print("brand aliases learned:", [(a, b, c) for a, b, c in bmerged][:30])
 
     data = {
-        "n": N, "notes": notes, "freq": f, "families": fams, "family_of": [fams.index(FAMILY_OF[n]) for n in notes],
+        "n": N, "notes": notes_out, "n_stat_notes": len(notes), "freq": f, "families": fams, "family_of": family_out,
         "perfumes": perfumes, "pyr": pyr, "meta": meta, "priced": priced, "dupes": dupes, "demand": demand,
         "sources": catalog.SOURCE_INFO, "cstats": cstats,
         "fam_names": [nice(x) for x in fam_names], "org_names": [nice(x) if x.isupper() else x for x in org_names],

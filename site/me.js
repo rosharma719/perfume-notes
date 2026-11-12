@@ -5,23 +5,77 @@
   const $ = (id) => document.getElementById(id);
   const GL = A.GL;
 
-  /* ================================================================ state */
+  /* ================================================================ state (saved in this browser) */
+  const FAMS = D.fam_names;
   const KEY = "wgww.me.v1";
   const blank = () => ({ love: [], avoid: [], famLove: [], famAvoid: [], aud: [], own: [], dis: [],
     shop: { fam: "all", since: "0", maxppm: "0", rated: false, hideDupes: true, showAvoid: false, learn: true, sort: "fit", shown: 20 } });
-  let S;
-  try { S = Object.assign(blank(), JSON.parse(localStorage.getItem(KEY) || "{}")); S.shop = Object.assign(blank().shop, S.shop || {}); } catch (e) { S = blank(); }
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+  // perfumes are stored as {n: name, b: brand, y: year}; older saves used "name|brand|year" strings
+  const asEntry = (x) => (typeof x === "string" ? (([n, b, y]) => ({ n: n || "", b: b || "", y: +y || 0 }))(x.split("|")) : x);
+  const entryOf = (k) => ({ n: P[k][0], b: P[k][1], y: P[k][2] });
+  let needSave = false;
+  const normalize = (s) => {
+    needSave = needSave || [].concat(s.own || [], s.dis || []).some((x) => typeof x === "string");   // old format: rewrite it once
+    s.own = (s.own || []).map(asEntry); s.dis = (s.dis || []).map(asEntry); s.shop = Object.assign(blank().shop, s.shop || {}); return s;
+  };
+  let S, saveOK = true;
+  try { S = Object.assign(blank(), JSON.parse(localStorage.getItem(KEY) || "{}")); } catch (e) { S = blank(); }
+  normalize(S);
+  const status = () => document.querySelectorAll(".save-status").forEach((el) => {
+    el.textContent = saveOK ? `Saved on this device · ${S.own.length} owned, ${S.love.length} loved` : "Can’t save in this browser (private mode?). Download a backup to keep your data.";
+    el.classList.toggle("bad", !saveOK);
+  });
+  const save = () => {
+    try { localStorage.setItem(KEY, JSON.stringify(S)); saveOK = true; if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); }
+    catch (e) { saveOK = false; }
+    status();
+  };
 
-  const pkey = (k) => P[k][0] + "|" + P[k][1] + "|" + P[k][2];
-  let kmap = null;
-  const km = () => kmap || (kmap = new Map(P.map((p, k) => [p[0] + "|" + p[1] + "|" + p[2], k])));
-  const FAMS = D.fam_names;
-  let ownK = [], disK = [], ownSet = new Set(), disSet = new Set(), dirty = true;
+  // match a saved entry to the current catalog: exact, then normalised, then same house + similar words
+  const nrm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, "");
+  const GENERIC = new Set(["eau", "de", "du", "la", "le", "les", "the", "of", "and", "parfum", "toilette", "cologne", "edp", "edt", "extrait", "pour"]);
+  const wordsOf = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(/[^a-z0-9]+/).filter((w) => w.length > 1 && !GENERIC.has(w) && !/^(19|20)\d\d$/.test(w));
+  let idx = null;
+  function buildIdx() {
+    idx = { exact: new Map(), norm: new Map(), brand: new Map() };
+    const push = (m, key, k) => { const l = m.get(key); if (l) l.push(k); else m.set(key, [k]); };
+    P.forEach((p, k) => { idx.exact.set(p[0] + "|" + p[1] + "|" + p[2], k); push(idx.norm, nrm(p[1]) + "|" + nrm(p[0]), k); push(idx.brand, nrm(p[1]), k); });
+  }
+  function resolve(e) {
+    if (!idx) buildIdx();
+    const hit = idx.exact.get(e.n + "|" + e.b + "|" + e.y);
+    if (hit !== undefined) return hit;
+    const c = idx.norm.get(nrm(e.b) + "|" + nrm(e.n));
+    if (c) return c.reduce((a, b) => (Math.abs(P[b][2] - e.y) < Math.abs(P[a][2] - e.y) ? b : a));
+    const eb = nrm(e.b);
+    const pool = idx.brand.get(eb) || [...idx.brand].filter(([bk]) => bk && eb && (bk.includes(eb) || eb.includes(bk))).flatMap(([, v]) => v);
+    const want = new Set(wordsOf(e.n)); let best, bs = 0;
+    for (const j of pool) {
+      if (e.y && P[j][2] && Math.abs(P[j][2] - e.y) > 1) continue;
+      const w = new Set(wordsOf(P[j][0])); let inter = 0; want.forEach((x) => { if (w.has(x)) inter++; });
+      const s = inter / (want.size + w.size - inter || 1);
+      if (s > bs) { bs = s; best = j; }
+    }
+    return bs >= 0.6 ? best : undefined;
+  }
+
+  let ownK = [], disK = [], ownSet = new Set(), disSet = new Set(), dirty = true, unres = [];
   function sync() {
-    ownK = S.own.map((x) => km().get(x)).filter((k) => k !== undefined);
-    disK = S.dis.map((x) => km().get(x)).filter((k) => k !== undefined);
+    unres = []; let healed = false;
+    const res = (kind) => {
+      const out = [];
+      S[kind].forEach((e, i) => {
+        const k = resolve(e);
+        if (k === undefined) { unres.push({ kind, e }); return; }
+        if (!out.includes(k)) out.push(k);
+        const ne = entryOf(k);
+        if (ne.n !== e.n || ne.b !== e.b || ne.y !== e.y) { S[kind][i] = ne; healed = true; }   // follow the catalog's current spelling
+      });
+      return out;
+    };
+    ownK = res("own"); disK = res("dis");
     ownSet = new Set(ownK); disSet = new Set(disK); dirty = true;
+    if (healed || needSave) { needSave = false; save(); } else status();
   }
   sync();
   const idxSet = (names, map) => new Set(names.map((n) => map.get(n)).filter((x) => x !== undefined));
@@ -29,13 +83,32 @@
   A.me = {
     isOwn: (k) => ownSet.has(k), isDis: (k) => disSet.has(k),
     toggle(kind, k) {
-      const key = pkey(k), other = kind === "own" ? "dis" : "own";
-      const i = S[kind].indexOf(key);
-      if (i >= 0) S[kind].splice(i, 1);
-      else { S[kind].push(key); const j = S[other].indexOf(key); if (j >= 0) S[other].splice(j, 1); }
+      const other = kind === "own" ? "dis" : "own";
+      const without = (list) => list.filter((e) => resolve(e) !== k);
+      const rest = without(S[kind]);
+      if (rest.length !== S[kind].length) S[kind] = rest;
+      else { S[kind].push(entryOf(k)); S[other] = without(S[other]); }
       save(); sync();
     },
   };
+
+  // backup: a file, or a link that carries the profile so it opens on another device
+  const b64 = (s) => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const unb64 = (s) => decodeURIComponent(escape(atob(s.replace(/-/g, "+").replace(/_/g, "/"))));
+  const packed = () => ({ l: S.love, a: S.avoid, fl: S.famLove, fa: S.famAvoid, au: S.aud, o: S.own.map((e) => [e.n, e.b, e.y]), d: S.dis.map((e) => [e.n, e.b, e.y]) });
+  const backupLink = () => location.href.split("#")[0] + "#me=" + b64(JSON.stringify(packed()));
+  function loadPacked(c) {
+    const keepShop = S.shop;
+    S = Object.assign(blank(), { love: c.l || [], avoid: c.a || [], famLove: c.fl || [], famAvoid: c.fa || [], aud: c.au || [],
+      own: (c.o || []).map(([n, b, y]) => ({ n, b, y })), dis: (c.d || []).map(([n, b, y]) => ({ n, b, y })), shop: keepShop });
+    normalize(S); save(); sync();
+  }
+  const rerenderAll = () => { renderTaste(); renderCollection(); renderShop(); };
+  function copyText(text, btn, label) {
+    const done = () => { btn.textContent = "Copied"; setTimeout(() => (btn.textContent = label), 1400); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, () => window.prompt("Copy this link", text));
+    else window.prompt("Copy this link", text);
+  }
 
   /* ================================================================ taste */
   const cycle = (arr, avoid, name) => {
@@ -64,6 +137,11 @@
     $("coll-n").textContent = ownK.length ? `(${ownK.length})` : "";
     $("coll-list").innerHTML = listHTML(ownK, "own") || `<li class="empty-li">Nothing yet. Search above, or tap “Own” on any fragrance.</li>`;
     $("coll-dis").innerHTML = listHTML(disK, "dis") || `<li class="empty-li">Nothing yet.</li>`;
+    $("coll-unres").innerHTML = unres.length
+      ? `<p class="unres"><b>${unres.length} saved ${unres.length === 1 ? "perfume" : "perfumes"} couldn’t be matched</b> after a data update. They’re kept; search above to re-add, or remove them.</p>` +
+        unres.map((u, i) => `<div class="unres-row"><span>${esc(u.e.n)} <i>${esc(u.e.b)}${u.e.y ? " · " + u.e.y : ""} · ${u.kind === "own" ? "owned" : "disliked"}</i></span><button class="act" data-unres="${i}">Remove</button></div>`).join("")
+      : "";
+    status();
     renderAnalysis();
   }
   function renderAnalysis() {
@@ -109,7 +187,7 @@
   /* ================================================================ shop */
   let ownMasks = [], disMasks = [], collNotes = new Set(), collFams = new Set(), implied = new Map(), builtFor = "";
   function prep() {
-    const sig = S.own.join("~") + "#" + S.dis.join("~") + "#" + S.shop.learn;
+    const sig = ownK.join(",") + "#" + disK.join(",") + "#" + S.shop.learn;
     if (!dirty && builtFor === sig) return;
     const mask = (k) => { const m = new Uint8Array(notes.length); P[k][4].forEach((i) => (m[i] = 1)); return { k, m, n: P[k][4].length }; };
     ownMasks = ownK.map(mask); disMasks = disK.map(mask);
@@ -149,7 +227,7 @@
       if (ownMasks.length) { [sim, simK] = best(ownMasks, ids); if (o.hideDupes && sim >= 0.7) continue; }
       if (disMasks.length) { [dsim, dsimK] = best(disMasks, ids); }
       let score = w / Math.sqrt(Math.max(4, ids.length)) - avoided * 1.2 - (famBad ? 1 : 0) + (p[5] >= 0 && famLove.has(p[5]) ? 0.5 : 0);
-      if (p[7]) score += (p[7] / 10 - 7) * 0.3 * Math.min(1, p[8] / 20);
+      if (p[7]) score += (ratingScore(k) - 7.2) * 0.5;
       let gaps = [];
       if (ownMasks.length) {
         gaps = ids.filter((i) => love.has(i) && !collNotes.has(i));
@@ -214,19 +292,21 @@
     if ((el = T("[data-tn]"))) { cycle(S.love, S.avoid, notes[+el.dataset.tn]); save(); dirty = true; el.className = "ttile " + state(S.love, S.avoid, notes[+el.dataset.tn]); $("taste-sum").innerHTML = `<b>${S.love.length}</b> loved · <b>${S.avoid.length}</b> avoided · <b>${S.own.length}</b> owned`; return; }
     if ((el = T("[data-tf]"))) { const f = FAMS[+el.dataset.tf]; cycle(S.famLove, S.famAvoid, f); save(); el.className = "ttile " + state(S.famLove, S.famAvoid, f); return; }
     if ((el = T("[data-ta]"))) { const i = +el.dataset.ta, j = S.aud.indexOf(i); if (j >= 0) S.aud.splice(j, 1); else S.aud.push(i); save(); renderTaste(); return; }
-    if (T("[data-clear-me]")) { if (confirm("Clear your likes, collection and dislikes from this browser?")) { S = blank(); save(); sync(); renderTaste(); renderCollection(); renderShop(); } return; }
+    if (T("[data-clear-me]")) { if (confirm("Clear your likes, collection and dislikes from this browser?")) { S = blank(); save(); sync(); rerenderAll(); } return; }
+    if ((el = T("[data-backup-link]"))) { copyText(backupLink(), el, "Copy backup link"); return; }
+    if ((el = T("[data-unres]"))) { const u = unres[+el.dataset.unres]; if (u) { S[u.kind].splice(S[u.kind].indexOf(u.e), 1); save(); sync(); renderCollection(); } return; }
     if (T("[data-export]")) {
       const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(S, null, 1)], { type: "application/json" }));
-      a.download = "my-perfume-taste.json"; document.body.appendChild(a); a.click(); a.remove(); return;
+      a.download = "my-perfume-collection.json"; document.body.appendChild(a); a.click(); a.remove(); return;
     }
     if ((el = T("[data-go]")) && el.closest("#shop-sum")) { A.show(el.dataset.go, true); return; }
     if (T("#shop-more")) { S.shop.shown += 20; save(); renderShop(); return; }
   });
   document.addEventListener("change", (e) => {
     const t = e.target;
-    if (t.id === "import" && t.files[0]) {
+    if ((t.id === "import" || t.id === "import2") && t.files[0]) {
       const r = new FileReader();
-      r.onload = () => { try { const j = JSON.parse(r.result); S = Object.assign(blank(), j); S.shop = Object.assign(blank().shop, j.shop || {}); save(); sync(); renderTaste(); renderCollection(); renderShop(); } catch (err) { alert("That file isn’t a taste export."); } };
+      r.onload = () => { try { S = Object.assign(blank(), JSON.parse(r.result)); normalize(S); save(); sync(); rerenderAll(); } catch (err) { alert("That file isn’t a taste export."); } };
       r.readAsText(t.files[0]); t.value = ""; return;
     }
     if (t.dataset.so) { S.shop[t.dataset.so] = t.value; S.shop.shown = 20; save(); renderShop(); return; }
@@ -288,8 +368,15 @@
     { key: "license", label: "License", m: 1, val: (r) => r.license, dir: 1, html: (r) => esc(r.license) },
     { key: "as_of", label: "As of", val: (r) => r.as_of, html: (r) => esc(r.as_of) }] });
   const cs = D.cstats;
-  if ($("cat-stats")) $("cat-stats").textContent = `${fmt(cs.catalog)} perfumes in the catalog, ${fmt(cs.rated)} with ratings, ${fmt(cs.pyramids)} with top/heart/base notes, ${fmt(cs.priced)} priced (${fmt(cs.priced_matched)} matched to notes).`;
+  if ($("cat-stats")) $("cat-stats").textContent = `${fmt(cs.raw_records)} source records were merged into ${fmt(cs.catalog)} perfumes (${fmt(cs.merged)} duplicates folded together, ${cs.brand_aliases} brand spellings unified, ${cs.new_notes} notes added). ${fmt(cs.rated)} have ratings, ${fmt(cs.pyramids)} have top/heart/base notes, ${fmt(cs.priced)} are priced (${fmt(cs.priced_matched)} matched to notes).`;
 
+  if (A.pendingMe) {
+    try {
+      const c = JSON.parse(unb64(A.pendingMe));
+      if (confirm(`Load the profile in this link (${(c.o || []).length} owned, ${(c.l || []).length} loved notes)? It replaces what’s saved on this device.`)) { loadPacked(c); A.show("collection", true); }
+    } catch (err) { alert("That link doesn’t contain a saved profile."); }
+  }
+  status();
   // first paint for whichever view was opened from the URL
   const v = A.view(); if (A.hooks[v]) A.hooks[v]();
 })();

@@ -54,7 +54,7 @@
     { id: "me", label: "For me", views: [["taste", "Taste"], ["collection", "Collection"], ["shop", "Shop"]] },
     { id: "buy", label: "Buy", views: [["prices", "Prices"], ["dupes", "Dupes"], ["trending", "Trending"]] },
     { id: "insights", label: "Insights", views: [["pairs", "Pairs"], ["trios", "Trios"], ["swap", "Stand-ins"], ["avoid", "Avoided"], ["trends", "Trends"], ["formulas", "Formula size"], ["audience", "Audience"]] },
-    { id: "styles", label: "Styles", views: [["families", "Families"], ["regions", "Regions"], ["houses", "Houses"], ["market", "By year"]] },
+    { id: "styles", label: "Styles", views: [["families", "Families"], ["regions", "Regions"], ["houses", "Houses"], ["market", "Market"]] },
     { id: "about", label: "About", ctx: "Definitions, sources and data caveats", views: [["about", "About"]] },
   ];
   const VIEWS = GROUPS.flatMap((g) => g.views.map((v) => v[0]));
@@ -62,7 +62,7 @@
   const lastIn = {};
   let view = "explore";
   const tabbar = $("tabbar"), panes = [...document.querySelectorAll(".pane")];
-  $("ptabs").innerHTML = GROUPS.map((g) => `<button class="pt" role="tab" data-group="${g.id}">${g.label}</button>`).join("");
+  $("vtabs").innerHTML = GROUPS.map((g, gi) => g.views.map(([id, label], vi) => (vi === 0 && gi > 0 ? '<span class="vsep"></span>' : "") + `<button class="vt" role="tab" data-view="${id}">${label}</button>`).join("")).join("");
   function writeHash() {
     const p = [];
     if (view !== "explore") p.push("v=" + view);
@@ -77,8 +77,9 @@
     view = v;
     const g = groupOf(v); lastIn[g.id] = v;
     panes.forEach((p) => (p.hidden = p.dataset.view !== v));
-    document.querySelectorAll(".pt").forEach((b) => { const on = b.dataset.group === g.id; b.classList.toggle("on", on); b.setAttribute("aria-selected", on); });
-    $("stabs").innerHTML = g.views.length < 2 ? `<span class="sctx">${g.ctx}</span>` : g.views.map(([id, label]) => `<button class="st${id === v ? " on" : ""}" role="tab" data-view="${id}">${label}</button>`).join("");
+    document.querySelectorAll(".vt").forEach((b) => { const on = b.dataset.view === v; b.classList.toggle("on", on); b.setAttribute("aria-selected", on); });
+    const bar = $("vtabs"), cur = bar.querySelector(".vt.on");
+    if (cur) bar.scrollTo({ left: Math.max(0, cur.offsetLeft - (bar.clientWidth - cur.offsetWidth) / 2), behavior: "smooth" });
     document.body.dataset.view = v;
     if (v !== "explore") $("panel").classList.remove("open");
     writeHash(); syncTabH();
@@ -95,8 +96,7 @@
       if (!sel.length) { lookupOpen = false; vis(); }
     }
     let el;
-    if ((el = T(".pt"))) { const g = GROUPS.find((x) => x.id === el.dataset.group); show(lastIn[g.id] || g.views[0][0], true); return; }
-    if ((el = T(".st"))) { show(el.dataset.view, true); return; }
+    if ((el = T(".vt"))) { show(el.dataset.view, true); return; }
     if ((el = T("[data-sort]"))) { sortBy(...el.dataset.sort.split(":")); return; }
     if ((el = T("[data-tab]"))) {
       const same = tab === el.dataset.tab;
@@ -263,7 +263,7 @@
     h += `<h5>Most often with</h5>` + list(often, (d) => (d.share / often[0].share) * 100, (d) => pct(d.share));
     h += `<h5>Unusually often with</h5>` + list(distinct, (d) => (d.lift / distinct[0].lift) * 100, (d) => times(d.lift));
     h += `<h5>Rarely with <span>seen / expected</span></h5>` + list(seldom, (d) => Math.max(2, (1 - d.lift) * 100), (d) => d.c + "/" + Math.round(d.exp));
-    if (sel.length === 1 && D.similar[sel[0]].length) {
+    if (sel.length === 1 && (D.similar[sel[0]] || []).length) {
       h += `<h5>Stand-ins <span>similar partners</span></h5><ul class="plist">` +
         D.similar[sel[0]].slice(0, 5).map(([j, s]) => `<li style="${fs(j)}">${chip(j, `data-tog="${j}"`)}<span class="bar"><i style="width:${Math.round(s * 100)}%"></i></span><span class="v">${Math.round(s * 100)}%</span></li>`).join("") + "</ul>";
     }
@@ -314,7 +314,8 @@
   const priceOf = new Map(); D.priced.forEach((e) => { if (e.k >= 0) priceOf.set(e.k, e); });
   const rankOf = new Map(); D.demand.europe.forEach((e) => { if (e.k >= 0) rankOf.set(e.k, e.rank); });
   const bestPpm = (e) => { const v = e.m.filter((x) => x != null); return v.length ? Math.min(...v) : null; };
-  const ratingScore = (k) => (P[k][7] / 10) * Math.min(1, P[k][8] / 20);
+  // Bayesian average: a few ratings can't beat many (prior 7.2 worth 25 votes)
+  const ratingScore = (k) => (P[k][7] ? ((P[k][7] / 10) * P[k][8] + 7.2 * 25) / (P[k][8] + 25) : 0);
   const shortList = (s) => { const a = (s || "").split(";").map((x) => x.trim()).filter(Boolean); return a.length >= 4 ? "all seasons" : a.join(" · "); };
   function factsHTML(k) {
     const p = P[k], out = [];
@@ -517,6 +518,7 @@
   /* ---------- boot ---------- */
   const hp = new URLSearchParams(location.hash.slice(1));
   tab = hp.get("t") === "frags" ? "frags" : "pairs";
+  APP.pendingMe = hp.get("me");
   APP.ready = true;
   const names0 = (hp.get("n") || "").split(",").map((n) => ix.get(n)).filter((i) => i !== undefined);
   show(hp.get("v") || "explore", false);

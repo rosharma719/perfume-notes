@@ -15,8 +15,7 @@
 </header>
 
 <nav class="tabbar" id="tabbar" aria-label="Sections">
-  <div class="ptabs" id="ptabs" role="tablist"></div>
-  <div class="sbar" id="sbar"><div class="stabs" id="stabs" role="tablist"></div></div>
+  <div class="tabbar-in" id="vtabs" role="tablist"></div>
 </nav>
 
 <main>
@@ -42,6 +41,7 @@
   <div class="inner">
     <p class="lede">Tap a note to cycle: <b>love</b>, <b>avoid</b>, off. Everything here is saved in this browser only.</p>
     <p class="tbar"><span id="taste-sum"></span><span><button class="linkish" data-export>Export</button><label class="linkish filelab">Import<input id="import" type="file" accept="application/json" hidden></label><button class="linkish" data-clear-me>Reset</button></span></p>
+    <p class="tbar"><span class="save-status"></span><span><button class="linkish" data-backup-link>Copy backup link</button></span></p>
     <div id="taste-board" class="board tboard"></div>
     <h3>Families</h3>
     <div id="taste-fams" class="chiprow"></div>
@@ -53,6 +53,8 @@
 <section class="pane" id="v-collection" data-view="collection" hidden>
   <div class="inner">
     <p class="lede">What you own. Shop steers away from near-copies and towards what fills gaps.</p>
+    <p class="tbar"><span class="save-status"></span><span><button class="linkish" data-backup-link>Copy backup link</button><button class="linkish" data-export>Download</button><label class="linkish filelab">Import<input id="import2" type="file" accept="application/json" hidden></label></span></p>
+    <div id="coll-unres"></div>
     <input id="coll-q" class="tabfilter" type="search" placeholder="Search a perfume to add" autocomplete="off" aria-label="Search a perfume to add">
     <ul id="coll-res" class="flist rl"></ul>
     <div id="coll-an"></div>
@@ -203,7 +205,8 @@
     <dl class="about">
       <dt>Lift</dt><dd>How many times more often notes appear together than if each were scattered independently. 1× is chance. With several notes selected, it compares a note’s share among matching perfumes to its share overall.</dd>
       <dt>Table colours</dt><dd>Relative to the other notes for your selection, so busy formulas don’t light everything up. The number on a tile is the raw lift.</dd>
-      <dt>Cleaning</dt><dd>394 raw labels merged into 153: origins dropped (Jasmine (Egypt) is Jasmine), aroma-chemicals folded into the note they imitate (Galaxolide is Musk), synonyms joined.</dd>
+      <dt>Cleaning notes</dt><dd>394 raw labels merged into 153: origins dropped (Jasmine (Egypt) is Jasmine), aroma-chemicals folded into the note they imitate (Galaxolide is Musk), synonyms joined. Notes from the newer sources are matched by head word and plural (Bulgarian rose is Rose); frequent ones the list lacked (honey, basil, cypress…) were added, each placed in the family it co-occurs with, with a few corrected by hand.</dd>
+      <dt>De-duplicating perfumes</dt><dd>Names are reduced to their distinguishing words (brand, year and concentration stripped), brand spellings that share many products are unified, and two entries merge when they have the same name in compatible years. Flankers (Intense, Elixir, Cologne) stay separate, and so do same-name perfumes with conflicting years.</dd>
       <dt>Stand-ins</dt><dd>Cosine similarity of notes’ centred lift profiles. Usage-based suggestions, not odour or chemistry. Similar fragrances use note-list overlap (Jaccard).</dd>
       <dt>Data</dt><dd><span id="cat-stats"></span> Notes are mapped onto a fixed list of 153. Fragrance statistics elsewhere (pairs, trios, families, trends) come from the original 26k-perfume sample; Explore, Shop and Collection use the full catalog. Ratings are Parfumo’s. Rankings ignore anything under about 40 perfumes.</dd>
       <dt>Shop</dt><dd>Scores perfumes by loved notes (and notes common in your collection), your preferred families, rating, and how many notes you don’t yet own. It penalises avoided notes, near-copies of what you own, and look-alikes of what you disliked. Fit is relative to your best candidate.</dd>

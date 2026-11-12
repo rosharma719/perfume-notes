@@ -23,6 +23,10 @@ Clustering: 12 hand-curated families plus data-driven Louvain communities on pos
 `python3 build_site.py` builds `site/data.js` from several open datasets (see `catalog.py` and the About tab for licenses and dates).
 Run `python3 build_site.py --refresh` to re-download every source first. Needs `numpy`.
 
+The catalog is de-duplicated (`catalog.py`): names are reduced to their distinguishing words, brand spellings that share products are
+unified, and entries merge when the name matches in compatible years. New notes seen often in the newer sources are added to the
+vocabulary and placed in a family by co-occurrence (`FAMILY_FIX` holds hand corrections).
+
 | Source | Gives | As of |
 |---|---|---|
 | doevent/perfume (MIT) | 26k perfumes: notes, audience, family, country | 2024 |
@@ -41,8 +45,9 @@ Deploy on Vercel with Root Directory `site`, Framework "Other", no build command
 
 - **Explore**: select notes; related ones take their family colour, unrelated go gray. Pairings + Fragrances panel.
 - **For me**: *Taste* (love/avoid notes and families, audience), *Collection* (what you own, gaps and overlaps), *Shop*
-  (ranked suggestions that favour loved notes and gaps, avoid near-copies, and show rating, price, season). Stored in the
-  browser only; export/import as JSON.
+  (ranked suggestions that favour loved notes and gaps, avoid near-copies, and show rating, price, season). Saved in the
+  browser (localStorage, persistent storage requested). Saved perfumes are re-matched when the catalog is rebuilt, and any
+  that can't be matched are kept and listed. Back up with a file or a link that carries the profile to another device.
 - **Buy**: Prices (decant EUR/ml), Dupes (original vs dupe, with note overlap), Trending (what Europe buys).
 - **Insights**: Pairs, Trios, Stand-ins, Avoided, Trends, Formula size, Audience (from the original 26k sample).
 - **Styles**: Families, Regions, Houses, By year. **About**: definitions and sources.
